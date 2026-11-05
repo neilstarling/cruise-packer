@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cruise Matrix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px
+        }
+
+        h1 {
+            color: #1a365d
+        }
+
+        .main-nav,
+        .gender-tabs,
+        .filter-buttons,
+        .outfit-slots {
+            display: flex;
+            gap: 10px;
+            justify-content: center
+        }
+
+        button,
+        .slot,
+        select,
+        input {
+            padding: 10px;
+            font-size: 0.9rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold
+        }
+
+        button {
+            background: #cbd5e1;
+            color: #475569;
+            border: none
+        }
+
+        .nav-btn.active,
+        .tab-btn.active {
+            background: #1a365d;
+            color: #fff
+        }
+
+        .screen-view,
+        .board-container {
+            display: none
+        }
+
+        .screen-view.active,
+        .board-container.active {
+            display: block
+        }
+
+        .board-container.active {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto
+        }
+
+        .category-column {
+            background: #2d3748;
+            border-radius: 8px;
+            padding: 15px;
+            color: #fff
+        }
+
+        .category-column h2 {
+            font-size: 1.1rem;
+            margin: 0 0 15px;
+            text-align: center;
+            border-bottom: 2px solid #4a5568;
+            padding-bottom: 10px
+        }
+
+        .tile-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 150px
+        }
+
+        .tile {
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            padding-left: 20px;
+            background: #fff;
+            color: #000
+        }
+
+        .tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 10px;
+            background: var(--tags, #fff)
+        }
+
+        .add-item-form {
+            max-width: 800px;
+            margin: 0 auto 25px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            align-items: center
+        }
+
+        .add-item-form input {
+            flex-grow: 2
+        }
+
+        .add-item-form button {
+            background: #10b981;
+            color: #fff
+        }
+
+        .color-checkbox-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 8px;
+            min-width: 180px;
+            max-height: 110px;
+            overflow-y: auto
+        }
+
+        .filter-container {
+            max-width: 1400px;
+            margin: 0 auto 20px;
+            background: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05)
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            background: #f1f5f9
+        }
+
+        .filter-btn.active {
+            border-color: #1a365d;
+            box-shadow: 0 0 0 2px #1a365d
+        }
+
+        .itinerary-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px
+        }
+
+        .night-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05)
+        }
+
+        .night-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-bottom: 15px
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid transparent;
+            margin-bottom: 10px
+        }
+
+        .her-row {
+            border-left-color: #ec4899
+        }
+
+        .him-row {
+            border-left-color: #3b82f6
+        }
+
+        .row-label {
+            width: 110px;
+            font-size: 0.9rem
+        }
+
+        .slot {
+            flex: 1;
+            background: #fff;
+            border: 2px dashed #cbd5e1;
+            border-radius: 6px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            color: #94a3b8
+        }
+
+        .slot.filled {
+            border-style: solid;
+            border-width: 1px;
+            color: #000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding-left: 15px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px
+        }
+
+        .modal-overlay.active {
+            display: flex
+        }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px
+        }
+
+        .modal-tiles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            overflow-y: auto;
+            margin: 15px 0
+        }
+
+        .settings-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05)
+        }
+
+        .add-label-form {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px
+        }
+
+        .labels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 15px
+        }
+
+        .label-config-card {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid #cbd5e1
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🚢 Joint Cruise Matrix</h1>
+        <nav class="main-nav">
+            <button class="nav-btn active" onclick="goS('wardrobe-screen')">1. The Wardrobes</button>
+            <button class="nav-btn" onclick="goS('itinerary-screen')">2. Evening Planner</button>
+            <button class="nav-btn" onclick="goS('settings-screen')">3. Label Settings</button>
+            <button class="nav-btn" onclick="goS('suitcase-screen')">4. Suitcase Packer</button>
+
+        </nav>
+    </header>
+    <main id="wardrobe-screen" class="screen-view active">
+        <div class="gender-tabs"><button class="tab-btn active" id="tab-her" onclick="goW('her')">💃 Her
+                Wardrobe</button><button class="tab-btn" id="tab-him" onclick="goW('him')">🕺 His Wardrobe</button>
+        </div>
+        <div class="add-item-form"><input type="text" id="item-name" placeholder="Item name"><select id="item-category">
+                <optgroup label="Her Clothes">
+                    <option value="dresses">Dresses</option>
+                    <option value="jackets-her">Jackets (Her)</option>
+                    <option value="shoes-her">Shoes (Her)</option>
+                    <option value="handbags">Handbags</option>
+                </optgroup>
+                <optgroup label="His Clothes">
+                    <option value="jackets-him">Jackets (Him)</option>
+                    <option value="waistcoats">Waistcoats</option>
+                    <option value="shirts">Shirts</option>
+                    <option value="trousers">Trousers</option>
+                    <option value="shoes-him">Shoes (Him)</option>
+                </optgroup>
+            </select>
+            <div class="color-checkbox-container">
+                <div id="item-color-checkboxes"></div>
+            </div><button onclick="addItem()">➕ Add Tile</button>
+        </div>
+        <div class="filter-container"><span>🔍 Filter Primary Color:</span>
+            <div id="filter-buttons-row" class="filter-buttons"></div>
+        </div>
+        <div id="wardrobe-her" class="board-container active">
+            <div class="category-column">
+                <h2>Dresses</h2>
+                <div class="tile-list" id="dresses-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Jackets</h2>
+                <div class="tile-list" id="jackets-her-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Shoes</h2>
+                <div class="tile-list" id="shoes-her-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Handbags</h2>
+                <div class="tile-list" id="handbags-list"></div>
+            </div>
+        </div>
+        <div id="wardrobe-him" class="board-container">
+            <div class="category-column">
+                <h2>Jackets</h2>
+                <div class="tile-list" id="jackets-him-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Waistcoats</h2>
+                <div class="tile-list" id="waistcoats-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Shirts</h2>
+                <div class="tile-list" id="shirts-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Trousers</h2>
+                <div class="tile-list" id="trousers-list"></div>
+            </div>
+            <div class="category-column">
+                <h2>Shoes</h2>
+                <div class="tile-list" id="shoes-him-list"></div>
+            </div>
+        </div>
+    </main>
+    <main id="itinerary-screen" class="screen-view">
+        <div class="itinerary-container">
+            <h2>📅 Night Itinerary Planner</h2>
+            <div
+                style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.05)">
+                <label>Cruise Duration: <select id="dur-select" onchange="setDur()">
+                        <option value="3">3 Nights</option>
+                        <option value="5">5 Nights</option>
+                        <option value="7" selected>7 Nights</option>
+                        <option value="10">10 Nights</option>
+                        <option value="14">14 Nights</option>
+                    </select></label></div>
+            <div id="dynamic-itinerary-cards"></div>
+        </div>
+        <div id="picker-modal" class="modal-overlay" onclick="closePick()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 id="modal-title">Select Item</h3><button
+                        style="background:none;border:none;font-size:1.2rem;cursor:pointer"
+                        onclick="closePick()">✕</button>
+                </div>
+                <div id="modal-list" class="modal-tiles-grid"></div>
+                <div style="text-align:right"><button onclick="setSlot(null)"
+                        style="background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:4px">Clear
+                        Slot</button></div>
+            </div>
+        </div>
+    </main>
+    <main id="settings-screen" class="screen-view">
+        <div class="settings-container">
+            <h2>🎨 Custom Sticker Labels</h2>
+            <div class="add-label-form"><input type="text" id="lbl-name" placeholder="Label Title">
+                <div style="display:flex;gap:20px"><label>Background: <input type="color" id="lbl-bg"
+                            value="#ffffff"></label><label>Sticker Tag: <input type="color" id="lbl-tag"
+                            value="#ffffff"></label></div><button onclick="addLabel()"
+                    style="background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:10px">➕ Save
+                    Label</button>
+            </div>
+            <h3>Active Labels</h3>
+            <div id="labels-grid" class="labels-grid"></div>
+            <h3 style="margin-top:40px;border-top:1px solid #e2e8f0;padding-top:20px">💾 Backup Data</h3>
+            <div style="display:flex;gap:15px"><button onclick="expData()"
+                    style="background:#4b5563;color:#fff;border:none;border-radius:4px;padding:10px 15px">📤 Export
+                    File</button><label
+                    style="background:#0284c7;color:#fff;padding:10px 15px;border-radius:6px;cursor:pointer">📥 Import
+                    File<input type="file" id="import-file-picker" accept=".json" onchange="impData(this)"
+                        style="display:none"></label></div>
+        </div>
+    </main>
+
+    <!-- SCREEN 4: SUITCASE PACKER -->
+    <main id="suitcase-screen" class="screen-view">
+        <div class="suitcase-container" style="max-width: 1200px; margin: 0 auto;">
+            <h2>🧳 Suitcase Allocation Dashboard</h2>
+            <p style="font-size: 0.85rem; color: #64748b; margin-top: -10px; margin-bottom: 20px;">Below are only the items assigned to your itinerary. Click a tile to pack it into Suitcase A or B, or move it back to the unpacking dock.</p>
+            
+            <div class="suitcase-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <!-- Column 1: Unpacked Dock -->
+                <div class="suitcase-column" style="background: #e2e8f0; border-radius: 8px; padding: 15px;">
+                    <h3 style="margin-top: 0; color: #475569; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">⚓ Unpacked Items</h3>
+                    <div id="unpacked-dock-list" class="tile-list"></div>
+                </div>
+
+                <!-- Column 2: Suitcase A -->
+                <div class="suitcase-column" style="background: #fee2e2; border-radius: 8px; padding: 15px; border-top: 4px solid #ef4444;">
+                    <h3 style="margin-top: 0; color: #991b1b; border-bottom: 2px solid #fca5a5; padding-bottom: 8px;">🧳 Suitcase A</h3>
+                    <div id="suitcase-a-list" class="tile-list"></div>
+                </div>
+
+                <!-- Column 3: Suitcase B -->
+                <div class="suitcase-column" style="background: #dbeafe; border-radius: 8px; padding: 15px; border-top: 4px solid #3b82f6;">
+                    <h3 style="margin-top: 0; color: #1e3a8a; border-bottom: 2px solid #93c5fd; padding-bottom: 8px;">🧳 Suitcase B</h3>
+                    <div id="suitcase-b-list" class="tile-list"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+
+
+    <script>
+        let sex = 'her', filt = null, actSlot = null;
+        const defL = [
+            {id: 'l_wh', name: 'White', bg: '#fff', tag: '#fff'},
+            {id: 'l_rd', name: 'Red', bg: '#fff', tag: '#e53e3e'},
+            {id: 'l_gd', name: 'Gold', bg: '#fff', tag: '#d97706'},
+            {id: 'l_br', name: 'Brown', bg: '#fff', tag: '#78350f'},
+            {id: 'l_gy', name: 'Grey', bg: '#e2e8f0', tag: '#4a5568'},
+            {id: 'l_or', name: 'Orange', bg: '#fff', tag: '#ea580c'},
+            {id: 'l_bk', name: 'Black', bg: '#fff', tag: '#1a202c'}
+        ];
+
+        function goS(id) {
+            document.querySelectorAll('.screen-view, .nav-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if (window.event && window.event.target.classList.contains('nav-btn')) window.event.target.classList.add('active');
+            if (id === 'itinerary-screen') buildItin();
+            if(id==='suitcase-screen') buildSuitcasePacker();
+        }
+
+        function goW(g) {
+            sex = g;
+            document.querySelectorAll('.board-container, .tab-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById('wardrobe-' + g).classList.add('active');
+            document.getElementById('tab-' + g).classList.add('active');
+            clearFilt();
+        }
+
+        function addItem() {
+            const nIn = document.getElementById('item-name'), cSel = document.getElementById('item-category');
+            const name = nIn.value.trim().toUpperCase(); if (!name) return alert("Enter name!");
+            const tIds = Array.from(document.querySelectorAll('#item-color-checkboxes input:checked')).map(c => c.value);
+            if (!tIds.length) tIds.push('l_wh');
+            let w = JSON.parse(localStorage.getItem('c_w')) || [];
+            w.push({id: 'i_' + Date.now(), name, category: cSel.value, tagIds: tIds, owner: sex});
+            localStorage.setItem('c_w', JSON.stringify(w));
+            nIn.value = ''; document.querySelectorAll('#item-color-checkboxes input').forEach(c => c.checked = false);
+            loadWard();
+        }
+    </script>
+
+    <script>
+        function drawTile(item) {
+            const box = document.getElementById(item.category + '-list'); if (!box) return;
+            const pri = (item.tagIds && item.tagIds.length > 0) ? item.tagIds[0] : 'l_wh';
+            if (filt && pri !== filt) return;
+            const L = JSON.parse(localStorage.getItem('c_l')) || defL;
+            const iL = L.filter(l => item.tagIds.includes(l.id)).sort((a, b) => item.tagIds.indexOf(a.id) - item.tagIds.indexOf(b.id));
+            const fontL = iL.length > 0 ? iL[0] : {bg: '#fff', tag: '#fff'}; const bg = fontL.bg || '#fff';
+            const tile = document.createElement('div'); tile.className = 'tile'; tile.innerText = item.name;
+            tile.style.background = bg; tile.style.color = bg === '#1a202c' ? '#fff' : '#000';
+            let grad = fontL.tag || '#fff';
+            if (iL.length > 1) {
+                const p = 100 / iL.length;
+                grad = `linear-gradient(to bottom, ${iL.map((l, i) => `${l.tag} ${i * p}%,${l.tag} ${(i + 1) * p}%`).join(',')})`;
+            }
+            tile.style.setProperty('--tags', grad);
+            tile.addEventListener('dblclick', () => {
+                if (confirm(`Delete ${item.name}?`)) {
+                    let w = JSON.parse(localStorage.getItem('c_w')) || [];
+                    localStorage.setItem('c_w', JSON.stringify(w.filter(i => i.id !== item.id))); tile.remove();
+                }
+            }); box.appendChild(tile);
+        }
+
+        function loadWard() {
+            let w = JSON.parse(localStorage.getItem('c_w')) || [];
+            document.querySelectorAll('.tile-list').forEach(l => l.innerHTML = '');
+            w.forEach(it => {if (it.owner === sex) drawTile(it);});
+        }
+
+        function setFilt(id) {filt = id; document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); if (document.getElementById('filter-btn-' + id)) document.getElementById('filter-btn-' + id).classList.add('active'); loadWard();}
+        function clearFilt() {filt = null; document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); if (document.getElementById('clear-filter-btn')) document.getElementById('clear-filter-btn').classList.add('active'); loadWard();}
+    </script>
+
+    <script>
+        function setDur() {localStorage.setItem('c_d', document.getElementById('dur-select').value); buildItin();}
+        function setDC(d, v) {let c = JSON.parse(localStorage.getItem('c_c')) || {}; c[d] = v; localStorage.setItem('c_c', JSON.stringify(c));}
+
+        function buildItin() {
+            const dur = parseInt(localStorage.getItem('c_d')) || 7; document.getElementById('dur-select').value = dur;
+            const plans = JSON.parse(localStorage.getItem('c_p')) || {}, codes = JSON.parse(localStorage.getItem('c_c')) || {}, w = JSON.parse(localStorage.getItem('c_w')) || [], L = JSON.parse(localStorage.getItem('c_l')) || defL;
+            let h = '';
+            for (let d = 1; d <= dur; d++) {
+                const c = codes[d] || 'Casual';
+                h += `<div class="night-card"><div class="night-header"><h3>Night ${d}</h3><select onchange="setDC(${d},this.value)"><option value="Formal" ${c === 'Formal' ? 'selected' : ''}>Formal Night</option><option value="Gala" ${c === 'Gala' ? 'selected' : ''}>Gala Night</option></select></div>
+
+                <div class="planner-rows">
+                        <div class="row her-row"><span class="row-label">Her Row:</span><div class="outfit-slots">${slotH(d, 'her', 'dresses', 'Dress', plans, w, L)}${slotH(d, 'her', 'jackets-her', 'Jacket', plans, w, L)}${slotH(d, 'her', 'shoes-her', 'Shoes', plans, w, L)}${slotH(d, 'her', 'handbags', 'Bag', plans, w, L)}</div></div>
+                        <div class="row him-row"><span class="row-label">His Row:</span><div class="outfit-slots">${slotH(d, 'him', 'jackets-him', 'Jacket', plans, w, L)}${slotH(d, 'him', 'waistcoats', 'Waistcoat', plans, w, L)}${slotH(d, 'him', 'shirts', 'Shirt', plans, w, L)}${slotH(d, 'him', 'trousers', 'Trousers', plans, w, L)}${slotH(d, 'him', 'shoes-him', 'Shoes', plans, w, L)}</div></div>
+                    </div></div>`;
+            } document.getElementById('dynamic-itinerary-cards').innerHTML = h;
+        }
+
+        function slotH(d, o, c, l, plans, w, L) {
+            const it = w.find(i => i.id === plans[`${d}_${o}_${c}`]);
+            if (it) {
+                let iL = L.filter(x => it.tagIds.includes(x.id)).sort((a, b) => it.tagIds.indexOf(a.id) - it.tagIds.indexOf(b.id));
+                if (!iL.length) iL = [{bg: '#fff', tag: '#fff'}]; const fontL = iL[0]; const bg = fontL.bg || '#fff';
+                let tag = fontL.tag || '#fff'; if (iL.length > 1) {const p = 100 / iL.length; tag = `linear-gradient(to bottom, ${iL.map((x, i) => `${x.tag} ${i * p}%,${x.tag} ${(i + 1) * p}%`).join(',')})`;}
+                return `<div class="slot filled" onclick="openPick(${d},'${o}','${c}')" style="background:${bg};color:${bg === '#1a202c' ? '#fff' : '#000'};border-left:8px solid transparent;position:relative;overflow:hidden;padding-left:15px"><span style="position:absolute;top:0;left:0;bottom:0;width:8px;background:${tag}"></span>${it.name}</div>`;
+            } return `<div class="slot" onclick="openPick(${d},'${o}','${c}')">${l}</div>`;
+        }
+
+        function openPick(d, o, c) {
+            actSlot = {d, o, c}; const w = JSON.parse(localStorage.getItem('c_w')) || [], L = JSON.parse(localStorage.getItem('c_l')) || defL, f = w.filter(i => i.owner === o && i.category === c);
+            document.getElementById('modal-title').innerText = `Select ${o === 'her' ? 'Her' : 'His'} ${c.replace('-her', '').replace('-him', '')}`; let h = '';
+            f.forEach(it => {
+                let iL = L.filter(x => it.tagIds.includes(x.id)).sort((a, b) => it.tagIds.indexOf(a.id) - it.tagIds.indexOf(b.id));
+                if (!iL.length) iL = [{bg: '#fff', tag: '#fff'}]; const fontL = iL[0]; const bg = fontL.bg;
+                let tag = fontL.tag; if (iL.length > 1) {const p = 100 / iL.length; tag = `linear-gradient(to bottom, ${iL.map((x, i) => `${x.tag} ${i * p}%,${x.tag} ${(i + 1) * p}%`).join(',')})`;}
+                h += `<div class="tile" onclick="setSlot('${it.id}')" style="background:${bg};color:${bg === '#1a202c' ? '#fff' : '#000'};padding-left:20px;--tags:${tag};cursor:pointer">${it.name}</div>`;
+            });
+            document.getElementById('modal-list').innerHTML = h || '<p style="grid-column:1/-1;text-align:center">No items found. Add to wardrobe first!</p>';
+            document.getElementById('picker-modal').classList.add('active');
+        }
+
+        function setSlot(id) {
+            if (!actSlot) return; let p = JSON.parse(localStorage.getItem('c_p')) || {}; const k = `${actSlot.d}_${actSlot.o}_${actSlot.c}`;
+            if (id === null) delete p[k]; else p[k] = id; localStorage.setItem('c_p', JSON.stringify(p)); closePick(); buildItin();
+        }
+        function closePick() {document.getElementById('picker-modal').classList.remove('active'); actSlot = null;}
+
+        function addLabel() {
+            const nIn = document.getElementById('lbl-name'), bgIn = document.getElementById('lbl-bg'), tagIn = document.getElementById('lbl-tag'); if (!nIn.value.trim()) return alert("Enter name!");
+            let L = JSON.parse(localStorage.getItem('c_l')) || defL; L.push({id: 'l_' + Date.now(), name: nIn.value.trim(), bg: bgIn.value, tag: tagIn.value});
+            localStorage.setItem('c_l', JSON.stringify(L)); nIn.value = ''; confL();
+        }
+        function deleteLabel(id) {let L = JSON.parse(localStorage.getItem('c_l')) || defL; if (confirm("Delete style?")) {localStorage.setItem('c_l', JSON.stringify(L.filter(l => l.id !== id))); confL();} }
+
+        function confL() {
+            const L = JSON.parse(localStorage.getItem('c_l')) || defL;
+            let cb = '', grid = '', fHTML = '<button id="clear-filter-btn" class="filter-btn clear-filter-btn active" onclick="clearFilt()">All</button>';
+            L.forEach(lbl => {
+                cb += `<label class="color-checkbox-item"><input type="checkbox" value="${lbl.id}"><span style="display:inline-block;width:12px;height:12px;background:${lbl.tag};border:1px solid #cbd5e1;margin:0 4px"></span>${lbl.name}</label>`;
+                fHTML += `<button id="filter-btn-${lbl.id}" class="filter-btn" onclick="setFilt('${lbl.id}')"><span style="display:inline-block;width:10px;height:10px;background:${lbl.tag};border-radius:50%;margin-right:4px"></span>${lbl.name}</button>`;
+                grid += `<div class="label-config-card"><div class="tile" style="width:130px;pointer-events:none;background:${lbl.bg};color:${lbl.bg === '#1a202c' ? '#fff' : '#000'};--tags:${lbl.tag};padding-left:20px">${lbl.name.toUpperCase()}</div><button onclick="deleteLabel('${lbl.id}')" style="background:#ef4444;color:#fff;padding:4px;border:none;border-radius:4px;cursor:pointer">🗑️</button></div>`;
+            });
+            document.getElementById('item-color-checkboxes').innerHTML = cb; document.getElementById('filter-buttons-row').innerHTML = fHTML; document.getElementById('labels-grid').innerHTML = grid;
+        }
+
+        function expData() {
+            const pkg = {w: JSON.parse(localStorage.getItem('c_w')) || [], l: JSON.parse(localStorage.getItem('c_l')) || defL, p: JSON.parse(localStorage.getItem('c_p')) || {}, c: JSON.parse(localStorage.getItem('c_c')) || {}, d: localStorage.getItem('c_d') || "7"};
+            const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pkg)); a.download = "cruise_backup.json"; document.body.appendChild(a); a.click(); a.remove();
+        }
+
+        function impData(fIn) {
+            if (!fIn.files.length) return; const r = new FileReader(); r.onload = function (e) {
+                try {const i = JSON.parse(e.target.result); if (i.w && i.l && confirm("Overwrite current data?")) {localStorage.setItem('c_w', JSON.stringify(i.w)); localStorage.setItem('c_l', JSON.stringify(i.l)); localStorage.setItem('c_p', JSON.stringify(i.p || {})); localStorage.setItem('c_c', JSON.stringify(i.c || {})); localStorage.setItem('c_d', i.d || "7"); confL(); loadWard(); if (document.getElementById('dynamic-itinerary-cards')) buildItin(); alert("Imported!");} } catch (err) {alert("Error reading file.");} fIn.value = '';
+            }; r.readAsText(fIn.files[0]);
+        }
+
+        window.onload = function () {confL(); loadWard();};
+   
+                 // FIXED SUITCASE PACKER LOGIC ENGINE
+        function buildSuitcasePacker() {
+            const plans = JSON.parse(localStorage.getItem('c_p')) || {};
+            const wardrobe = JSON.parse(localStorage.getItem('c_w')) || [];
+            const labels = JSON.parse(localStorage.getItem('c_l')) || defL;
+            const packedState = JSON.parse(localStorage.getItem('c_packed')) || {};
+
+            const assignedItemIds = [...new Set(Object.values(plans))].filter(Boolean);
+            const assignedItems = wardrobe.filter(it => assignedItemIds.includes(it.id));
+
+            document.getElementById('unpacked-dock-list').innerHTML = '';
+            document.getElementById('suitcase-a-list').innerHTML = '';
+            document.getElementById('suitcase-b-list').innerHTML = '';
+
+            assignedItems.forEach(item => {
+                const itemState = packedState[item.id] || 'unpacked';
+                let itemLabels = labels.filter(l => item.tagIds.includes(l.id)).sort((a,b) => item.tagIds.indexOf(a.id) - item.tagIds.indexOf(b.id));
+                if (!itemLabels.length) itemLabels = [{ bg: '#fff', tag: '#fff' }];
+                const baseBg = itemLabels[0].bg || '#fff';
+
+                let tagStyle = itemLabels[0].tag || '#ffffff';
+                if (itemLabels.length > 1) {
+                    const pct = 100 / itemLabels.length;
+                    tagStyle = `linear-gradient(to bottom, ${itemLabels.map((l, i) => `${l.tag} ${i*pct}%, ${l.tag} ${(i+1)*pct}%`).join(', ')})`;
+                }
+
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.innerText = `[${item.owner === 'her' ? '💃' : '🕺'}] ${item.name}`;
+                tile.style.background = baseBg;
+                tile.style.color = (baseBg === '#1a202c' || baseBg === '#000000') ? '#fff' : '#000';
+                tile.style.setProperty('--tags', tagStyle);
+                tile.style.cursor = 'pointer';
+
+                tile.onclick = function() {
+                    let nextState = 'unpacked';
+                    if (itemState === 'unpacked') nextState = 'a';
+                    else if (itemState === 'a') nextState = 'b';
+                    
+                    packedState[item.id] = nextState;
+                    localStorage.setItem('c_packed', JSON.stringify(packedState));
+                    buildSuitcasePacker();
+                };
+
+                // FIXED TARGET ENGINE ROUTE
+                let targetColumnId = 'unpacked-dock-list';
+                if (itemState === 'a') targetColumnId = 'suitcase-a-list';
+                if (itemState === 'b') targetColumnId = 'suitcase-b-list';
+
+                document.getElementById(targetColumnId).appendChild(tile);
+            });
+
+            if (assignedItems.length === 0) {
+                document.getElementById('unpacked-dock-list').innerHTML = '<p style="text-align:center;color:#64748b;font-size:0.9rem;padding:20px;">No outfits planned yet! Items will appear here once assigned to a night in the Evening Planner.</p>';
+            }
+        }
+
+
+   
+   </script>
+
+
+</body>
+
+</html>
