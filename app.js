@@ -1,6 +1,7 @@
 let sex = 'her';
 let filt = {};
 let actSlot = null;
+const defaultSuitcaseNames = { a: 'Suitcase A', b: 'Suitcase B' };
 
 const defL = [
     { id: 'l_wh', name: 'White', bg: '#fff', tag: '#fff' },
@@ -16,9 +17,20 @@ const categories = [
     'dresses', 'jackets-her', 'shoes-her', 'handbags', 'jackets-him',
     'waistcoats', 'shirts', 'trousers', 'shoes-him'
 ];
+const cruiseDurations = ['5', '7', '10', '12'];
+const legacyCruiseDurations = { '3': '5', '14': '12' };
 
 function readData(key, fallback) {
     return JSON.parse(localStorage.getItem(key)) || fallback;
+}
+
+function getCruiseDuration() {
+    const storedDuration = localStorage.getItem('c_d') || '7';
+    const duration = cruiseDurations.includes(storedDuration)
+        ? storedDuration
+        : legacyCruiseDurations[storedDuration] || '7';
+    if (duration !== storedDuration) localStorage.setItem('c_d', duration);
+    return Number(duration);
 }
 
 function goScrn(id, button) {
@@ -26,7 +38,6 @@ function goScrn(id, button) {
     document.getElementById(id).classList.add('active');
     button.classList.add('active');
     if (id === 'itinerary-screen') buildItin();
-    if (id === 'suitcase-screen') buildSuitcasePacker();
 }
 
 function goWard(owner) {
@@ -34,6 +45,7 @@ function goWard(owner) {
     document.querySelectorAll('.board-container, .tab-btn').forEach(element => element.classList.remove('active'));
     document.getElementById(`wardrobe-${owner}`).classList.add('active');
     document.getElementById(`tab-${owner}`).classList.add('active');
+    loadWard();
 }
 
 function addItem() {
@@ -51,12 +63,15 @@ function addItem() {
     if (!tagIds.length) tagIds.push('l_wh');
 
     const wardrobe = readData('c_w', []);
+    const owner = ['jackets-him', 'waistcoats', 'shirts', 'trousers', 'shoes-him'].includes(categorySelect.value)
+        ? 'him'
+        : 'her';
     wardrobe.push({
         id: `i_${Date.now()}`,
         name,
         category: categorySelect.value,
         tagIds,
-        owner: sex
+        owner
     });
     localStorage.setItem('c_w', JSON.stringify(wardrobe));
     nameInput.value = '';
@@ -95,7 +110,8 @@ function drawTile(item) {
     const box = document.getElementById(`${item.category}-list`);
     if (!box) return;
 
-    if (filt[item.category] && !itemTagIds(item).includes(filt[item.category])) return;
+    const selectedFilters = filt[item.category] || [];
+    if (selectedFilters.length && !selectedFilters.some(filterId => itemTagIds(item).includes(filterId))) return;
 
     const tile = document.createElement('div');
     tile.className = 'tile wardrobe-tile';
@@ -137,10 +153,25 @@ function deleteItem(id) {
     loadWard();
 }
 
-function setFilt(category, labelId) {
-    if (labelId) filt[category] = labelId;
-    else delete filt[category];
+function setFilt(category, labelId, isSelected) {
+    const selectedFilters = filt[category] || [];
+    filt[category] = isSelected
+        ? [...new Set([...selectedFilters, labelId])]
+        : selectedFilters.filter(filterId => filterId !== labelId);
+    const filter = Array.from(document.querySelectorAll('.category-filter'))
+        .find(element => element.dataset.categoryFilter === category);
+    const selectedNames = labelsForFilter(category);
+    filter.querySelector('summary').textContent = selectedNames.length
+        ? `Filter colours: ${selectedNames.join(', ')}`
+        : 'Filter colours: All';
     loadWard();
+}
+
+function labelsForFilter(category) {
+    const selectedFilters = filt[category] || [];
+    return readData('c_l', defL)
+        .filter(label => selectedFilters.includes(label.id))
+        .map(label => label.name);
 }
 
 function setDur() {
@@ -155,10 +186,11 @@ function setDC(day, value) {
 }
 
 function buildItin() {
-    const duration = parseInt(localStorage.getItem('c_d'), 10) || 7;
+    const duration = getCruiseDuration();
     document.getElementById('dur-select').value = String(duration);
     const plans = readData('c_p', {});
     const codes = readData('c_c', {});
+    const outfitCases = readData('c_outfitCases', {});
     const wardrobe = readData('c_w', []);
     const labels = readData('c_l', defL);
     const cards = document.getElementById('dynamic-itinerary-cards');
@@ -188,17 +220,17 @@ function buildItin() {
         rows.className = 'planner-rows';
         rows.appendChild(createPlannerRow(day, 'her', [
             ['dresses', 'Dress'], ['jackets-her', 'Jacket'], ['shoes-her', 'Shoes'], ['handbags', 'Bag']
-        ], plans, wardrobe, labels));
+        ], plans, outfitCases, wardrobe, labels));
         rows.appendChild(createPlannerRow(day, 'him', [
             ['jackets-him', 'Jacket'], ['waistcoats', 'Waistcoat'], ['shirts', 'Shirt'],
             ['trousers', 'Trousers'], ['shoes-him', 'Shoes']
-        ], plans, wardrobe, labels));
+        ], plans, outfitCases, wardrobe, labels));
         card.appendChild(rows);
         cards.appendChild(card);
     }
 }
 
-function createPlannerRow(day, owner, slots, plans, wardrobe, labels) {
+function createPlannerRow(day, owner, slots, plans, outfitCases, wardrobe, labels) {
     const row = document.createElement('div');
     row.className = `row ${owner}-row`;
     const rowLabel = document.createElement('span');
@@ -209,8 +241,139 @@ function createPlannerRow(day, owner, slots, plans, wardrobe, labels) {
     slots.forEach(([category, label]) => {
         slotGroup.appendChild(createSlot(day, owner, category, label, plans, wardrobe, labels));
     });
-    row.append(rowLabel, slotGroup);
+    const suitcaseSelect = document.createElement('select');
+    suitcaseSelect.className = 'outfit-case-select';
+    suitcaseSelect.dataset.day = String(day);
+    suitcaseSelect.dataset.owner = owner;
+    suitcaseSelect.setAttribute('aria-label', `Suitcase for ${owner === 'her' ? 'her' : 'his'} Night ${day} outfit`);
+    const suitcaseNames = getSuitcaseNames();
+    [
+        ['', 'Choose suitcase'],
+        ['a', suitcaseNames.a],
+        ['b', suitcaseNames.b]
+    ].forEach(([value, name]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = name;
+        option.selected = (outfitCases[`${day}_${owner}`] || '') === value;
+        suitcaseSelect.appendChild(option);
+    });
+    row.append(rowLabel, slotGroup, suitcaseSelect);
     return row;
+}
+
+function setOutfitCase(day, owner, suitcase) {
+    const outfitCases = readData('c_outfitCases', {});
+    const key = `${day}_${owner}`;
+    if (suitcase) outfitCases[key] = suitcase;
+    else delete outfitCases[key];
+    localStorage.setItem('c_outfitCases', JSON.stringify(outfitCases));
+}
+
+function printPackingList() {
+    const duration = getCruiseDuration();
+    const plans = readData('c_p', {});
+    const outfitCases = readData('c_outfitCases', {});
+    const wardrobe = readData('c_w', []);
+    const suitcaseNames = getSuitcaseNames();
+    const outfitsByCase = { a: {}, b: {}, unassigned: {} };
+    const categoriesByOwner = {
+        her: [
+            ['dresses', 'Dress'], ['jackets-her', 'Jkt'], ['shoes-her', 'Shoes'], ['handbags', 'Bag']
+        ],
+        him: [
+            ['jackets-him', 'Jkt'], ['waistcoats', 'Wc'], ['shirts', 'Shirt'],
+            ['trousers', 'Trs'], ['shoes-him', 'Shoes']
+        ]
+    };
+
+    for (let day = 1; day <= duration; day++) {
+        for (const owner of ['her', 'him']) {
+            const outfit = categoriesByOwner[owner]
+                .map(([category, label]) => {
+                    const item = wardrobe.find(entry => entry.id === plans[`${day}_${owner}_${category}`]);
+                    return item ? `${label}: ${item.name}` : null;
+                })
+                .filter(Boolean);
+            if (!outfit.length) continue;
+
+            const suitcase = outfitCases[`${day}_${owner}`];
+            const group = outfitsByCase[suitcase === 'a' || suitcase === 'b' ? suitcase : 'unassigned'];
+            group[day] ||= { her: [], him: [] };
+            group[day][owner] = outfit;
+        }
+    }
+
+    const report = document.getElementById('packing-list-report');
+    report.replaceChildren();
+
+    const title = document.createElement('h1');
+    title.className = 'packing-list-title';
+    title.textContent = 'Cruise Packing List';
+    const subtitle = document.createElement('p');
+    subtitle.className = 'packing-list-subtitle';
+    subtitle.textContent = `${duration}-night cruise`;
+    report.append(title, subtitle);
+
+    [
+        ['a', suitcaseNames.a],
+        ['b', suitcaseNames.b],
+        ['unassigned', 'Not assigned to a suitcase']
+    ].forEach(([key, name]) => {
+        const nights = outfitsByCase[key];
+        if (key === 'unassigned' && !Object.keys(nights).length) return;
+
+        const body = document.createElement('tbody');
+        body.className = `packing-case packing-case-${key}`;
+        const caseHeading = document.createElement('tr');
+        caseHeading.className = 'packing-case-heading';
+        const caseCell = document.createElement('th');
+        caseCell.colSpan = 3;
+        caseCell.textContent = name;
+        caseHeading.appendChild(caseCell);
+        body.appendChild(caseHeading);
+
+        const dayNumbers = Object.keys(nights).map(Number).sort((a, b) => a - b);
+        dayNumbers.forEach(day => {
+            const row = document.createElement('tr');
+            const nightCell = document.createElement('th');
+            nightCell.scope = 'row';
+            nightCell.textContent = `Night ${day}`;
+            row.appendChild(nightCell);
+
+            for (const owner of ['her', 'him']) {
+                const cell = document.createElement('td');
+                cell.textContent = nights[day][owner].join(' | ') || '—';
+                row.appendChild(cell);
+            }
+            body.appendChild(row);
+        });
+        if (!dayNumbers.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 3;
+            cell.textContent = 'No outfits assigned.';
+            row.appendChild(cell);
+            body.appendChild(row);
+        }
+        let table = report.querySelector('table');
+        if (!table) {
+            table = document.createElement('table');
+            table.className = 'packing-list-table';
+            const header = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['Night', 'Her outfit', 'His outfit'].forEach(text => {
+                const cell = document.createElement('th');
+                cell.textContent = text;
+                headerRow.appendChild(cell);
+            });
+            header.appendChild(headerRow);
+            table.appendChild(header);
+            report.appendChild(table);
+        }
+        table.appendChild(body);
+    });
+    window.print();
 }
 
 function createSlot(day, owner, category, label, plans, wardrobe, labels) {
@@ -321,29 +484,38 @@ function confL() {
     checkboxContainer.replaceChildren();
     labelsGrid.replaceChildren();
 
-    document.querySelectorAll('.category-filter').forEach(select => {
-        const category = select.dataset.categoryFilter;
-        const selectedLabelId = filt[category];
-        select.replaceChildren();
+    document.querySelectorAll('.category-filter').forEach(filter => {
+        const category = filter.dataset.categoryFilter;
+        const selectedFilters = (filt[category] || []).filter(id => labels.some(label => label.id === id));
+        filt[category] = selectedFilters;
 
-        const allOption = document.createElement('option');
-        allOption.value = '';
-        allOption.textContent = 'All colors';
-        select.appendChild(allOption);
-
+        const options = filter.querySelector('.category-filter-options');
+        options.replaceChildren();
         labels.forEach(label => {
-            const option = document.createElement('option');
-            option.value = label.id;
-            option.textContent = label.name;
-            select.appendChild(option);
+            const checkboxLabel = document.createElement('label');
+            checkboxLabel.className = 'category-filter-option';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = selectedFilters.includes(label.id);
+            checkbox.dataset.categoryFilterCheckbox = '';
+            checkbox.dataset.categoryFilter = category;
+            checkbox.dataset.labelId = label.id;
+            const swatch = document.createElement('span');
+            swatch.className = 'color-swatch';
+            swatch.style.background = label.tag;
+            const labelName = document.createElement('span');
+            labelName.textContent = label.name;
+            checkboxLabel.append(checkbox, swatch, labelName);
+            options.appendChild(checkboxLabel);
         });
 
-        if (selectedLabelId && labels.some(label => label.id === selectedLabelId)) {
-            select.value = selectedLabelId;
-        } else {
-            delete filt[category];
-            select.value = '';
-        }
+        const summary = filter.querySelector('summary');
+        const selectedNames = labels
+            .filter(label => selectedFilters.includes(label.id))
+            .map(label => label.name);
+        summary.textContent = selectedNames.length
+            ? `Filter colours: ${selectedNames.join(', ')}`
+            : 'Filter colours: All';
     });
 
     labels.forEach(label => {
@@ -380,47 +552,34 @@ function confL() {
     });
 }
 
-function buildSuitcasePacker() {
-    const plans = readData('c_p', {});
-    const wardrobe = readData('c_w', []);
-    const labels = readData('c_l', defL);
-    const packedState = readData('c_packed', {});
-    const assignedItemIds = [...new Set(Object.values(plans))].filter(Boolean);
-    const assignedItems = wardrobe.filter(item => assignedItemIds.includes(item.id));
-    const columns = {
-        unpacked: document.getElementById('unpacked-dock-list'),
-        a: document.getElementById('suitcase-a-list'),
-        b: document.getElementById('suitcase-b-list')
+function getSuitcaseNames() {
+    const names = readData('c_bagNames', defaultSuitcaseNames);
+    return {
+        a: typeof names.a === 'string' && names.a.trim() ? names.a.trim() : defaultSuitcaseNames.a,
+        b: typeof names.b === 'string' && names.b.trim() ? names.b.trim() : defaultSuitcaseNames.b
     };
-    Object.values(columns).forEach(column => column.replaceChildren());
-
-    assignedItems.forEach(item => {
-        const state = packedState[item.id] || 'unpacked';
-        const tile = document.createElement('button');
-        tile.type = 'button';
-        tile.className = 'tile suitcase-tile';
-        tile.dataset.action = 'cycle-packed-state';
-        tile.dataset.itemId = item.id;
-        tile.textContent = `[${item.owner === 'her' ? 'Her' : 'His'}] ${item.name}`;
-        tile.setAttribute('aria-label', `${item.name}, currently ${state === 'unpacked' ? 'unpacked' : `in suitcase ${state.toUpperCase()}`}. Activate to move to the next location.`);
-        applyTileStyle(tile, item, labels);
-        columns[state in columns ? state : 'unpacked'].appendChild(tile);
-    });
-
-    if (!assignedItems.length) {
-        const message = document.createElement('p');
-        message.className = 'empty-suitcase-message';
-        message.textContent = 'No outfits planned yet! Items will appear here once assigned to a night in the Evening Planner.';
-        columns.unpacked.appendChild(message);
-    }
 }
 
-function cyclePackedState(id) {
-    const packedState = readData('c_packed', {});
-    const state = packedState[id] || 'unpacked';
-    packedState[id] = state === 'unpacked' ? 'a' : state === 'a' ? 'b' : 'unpacked';
-    localStorage.setItem('c_packed', JSON.stringify(packedState));
-    buildSuitcasePacker();
+function saveSuitcaseNames() {
+    const aInput = document.getElementById('suitcase-a-name-input');
+    const bInput = document.getElementById('suitcase-b-name-input');
+    const a = aInput.value.trim();
+    const b = bInput.value.trim();
+    if (!a || !b) {
+        alert('Enter a name for both suitcases.');
+        (!a ? aInput : bInput).focus();
+        return;
+    }
+
+    const names = { a, b };
+    localStorage.setItem('c_bagNames', JSON.stringify(names));
+    applySuitcaseNamesToUI(names);
+    if (document.getElementById('itinerary-screen').classList.contains('active')) buildItin();
+}
+
+function applySuitcaseNamesToUI(names = getSuitcaseNames()) {
+    document.getElementById('suitcase-a-name-input').value = names.a;
+    document.getElementById('suitcase-b-name-input').value = names.b;
 }
 
 function expData() {
@@ -430,7 +589,8 @@ function expData() {
         p: readData('c_p', {}),
         c: readData('c_c', {}),
         d: localStorage.getItem('c_d') || '7',
-        packed: readData('c_packed', {})
+        suitcaseNames: getSuitcaseNames(),
+        outfitCases: readData('c_outfitCases', {})
     };
     const file = new Blob([JSON.stringify(packageData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(file);
@@ -462,14 +622,32 @@ function validateBackup(data) {
     if (data.c !== undefined && (!data.c || typeof data.c !== 'object' || Array.isArray(data.c))) {
         throw new Error('The backup contains invalid night settings.');
     }
-    if (data.packed !== undefined && (!data.packed || typeof data.packed !== 'object' || Array.isArray(data.packed))) {
-        throw new Error('The backup contains invalid suitcase assignments.');
+    if (data.suitcaseNames !== undefined && (
+        !data.suitcaseNames || typeof data.suitcaseNames !== 'object' || Array.isArray(data.suitcaseNames)
+        || ['a', 'b'].some(key => data.suitcaseNames[key] !== undefined
+            && (typeof data.suitcaseNames[key] !== 'string' || data.suitcaseNames[key].length > 40))
+    )) {
+        throw new Error('The backup contains invalid suitcase names.');
     }
-    const duration = data.d === undefined ? '7' : String(data.d);
-    if (!['3', '5', '7', '10', '14'].includes(duration)) {
+    if (data.outfitCases !== undefined && (
+        !data.outfitCases || typeof data.outfitCases !== 'object' || Array.isArray(data.outfitCases)
+        || Object.entries(data.outfitCases).some(([key, value]) =>
+            !/^\d+_(her|him)$/.test(key) || !['a', 'b'].includes(value))
+    )) {
+        throw new Error('The backup contains invalid outfit suitcase assignments.');
+    }
+    const storedDuration = data.d === undefined ? '7' : String(data.d);
+    if (![...cruiseDurations, ...Object.keys(legacyCruiseDurations)].includes(storedDuration)) {
         throw new Error('The backup contains an unsupported cruise duration.');
     }
-    return { ...data, d: duration, p: data.p || {}, c: data.c || {}, packed: data.packed || {} };
+    const duration = cruiseDurations.includes(storedDuration)
+        ? storedDuration
+        : legacyCruiseDurations[storedDuration];
+    const suitcaseNames = {
+        a: data.suitcaseNames?.a?.trim() || defaultSuitcaseNames.a,
+        b: data.suitcaseNames?.b?.trim() || defaultSuitcaseNames.b
+    };
+    return { ...data, d: duration, p: data.p || {}, c: data.c || {}, outfitCases: data.outfitCases || {}, suitcaseNames };
 }
 
 async function impData(fileInput) {
@@ -483,12 +661,13 @@ async function impData(fileInput) {
         localStorage.setItem('c_p', JSON.stringify(imported.p));
         localStorage.setItem('c_c', JSON.stringify(imported.c));
         localStorage.setItem('c_d', imported.d);
-        localStorage.setItem('c_packed', JSON.stringify(imported.packed));
+        localStorage.setItem('c_bagNames', JSON.stringify(imported.suitcaseNames));
+        localStorage.setItem('c_outfitCases', JSON.stringify(imported.outfitCases));
         filt = {};
         confL();
+        applySuitcaseNamesToUI(imported.suitcaseNames);
         loadWard();
         if (document.getElementById('itinerary-screen').classList.contains('active')) buildItin();
-        if (document.getElementById('suitcase-screen').classList.contains('active')) buildSuitcasePacker();
         alert('Imported!');
     } catch (error) {
         alert(`Unable to import backup: ${error.message}`);
@@ -509,6 +688,8 @@ document.addEventListener('click', event => {
     if (button.dataset.screen) goScrn(button.dataset.screen, button);
     else if (button.classList.contains('tab-btn')) goWard(button.dataset.owner);
     else if (button.dataset.action === 'add-item') addItem();
+    else if (button.dataset.action === 'save-suitcase-names') saveSuitcaseNames();
+    else if (button.dataset.action === 'print-packing-list') printPackingList();
     else if (button.dataset.action === 'open-picker') {
         openPick(Number(button.dataset.day), button.dataset.owner, button.dataset.category);
     } else if (button.dataset.action === 'choose-item') setSlot(button.dataset.itemId);
@@ -517,16 +698,22 @@ document.addEventListener('click', event => {
     else if (button.dataset.action === 'delete-label') deleteLabel(button.dataset.labelId);
     else if (button.dataset.action === 'delete-item') deleteItem(button.dataset.itemId);
     else if (button.dataset.action === 'export-data') expData();
-    else if (button.dataset.action === 'cycle-packed-state') cyclePackedState(button.dataset.itemId);
 });
 
 document.addEventListener('change', event => {
     if (event.target.id === 'dur-select') setDur();
     else if (event.target.id === 'import-file-picker') impData(event.target);
-    else if (event.target.matches('.category-filter')) {
-        setFilt(event.target.dataset.categoryFilter, event.target.value);
+    else if (event.target.matches('[data-category-filter-checkbox]')) {
+        setFilt(
+            event.target.dataset.categoryFilter,
+            event.target.dataset.labelId,
+            event.target.checked
+        );
     }
-    else if (event.target.matches('#dynamic-itinerary-cards select')) {
+    else if (event.target.matches('.outfit-case-select')) {
+        setOutfitCase(event.target.dataset.day, event.target.dataset.owner, event.target.value);
+    }
+    else if (event.target.matches('#dynamic-itinerary-cards select[data-day]:not(.outfit-case-select)')) {
         setDC(event.target.dataset.day, event.target.value);
     }
 });
@@ -539,5 +726,6 @@ document.addEventListener('keydown', event => {
 
 window.addEventListener('DOMContentLoaded', () => {
     confL();
+    applySuitcaseNamesToUI();
     loadWard();
 });

@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cruise Packing Matrix</title>
+    <title>Cruise Packing App</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>🚢 Joint Cruise Matrix</h1>
+        <h1>🚢 Cruise Packing App</h1>
         <nav class="main-nav">
             <button class="nav-btn active" data-screen="wardrobe-screen">The Wardrobes</button>
             <button class="nav-btn" data-screen="itinerary-screen">Evening Planner</button>
-            <button class="nav-btn" data-screen="suitcase-screen">Suitcase Packer</button>
             <button class="nav-btn" data-screen="settings-screen">Settings</button>
         </nav>
     </header>
@@ -24,37 +23,17 @@
             <button class="tab-btn" id="tab-him" data-owner="him">🕺 His Wardrobe</button>
         </div>
         <div id="wardrobe-her" class="board-container active">
-            <div class="category-column"><h2>Dresses</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="dresses" aria-label="Filter dresses by color"><option value="">All colors</option></select></label><div class="tile-list" id="dresses-list"></div></div>
-            <div class="category-column"><h2>Jackets</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="jackets-her" aria-label="Filter her jackets by color"><option value="">All colors</option></select></label><div class="tile-list" id="jackets-her-list"></div></div>
-            <div class="category-column"><h2>Shoes</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="shoes-her" aria-label="Filter her shoes by color"><option value="">All colors</option></select></label><div class="tile-list" id="shoes-her-list"></div></div>
-            <div class="category-column"><h2>Handbags</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="handbags" aria-label="Filter handbags by color"><option value="">All colors</option></select></label><div class="tile-list" id="handbags-list"></div></div>
+            <div class="category-column"><h2>Dresses</h2><details class="category-filter" data-category-filter="dresses"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="dresses-list"></div></div>
+            <div class="category-column"><h2>Jackets</h2><details class="category-filter" data-category-filter="jackets-her"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="jackets-her-list"></div></div>
+            <div class="category-column"><h2>Shoes</h2><details class="category-filter" data-category-filter="shoes-her"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="shoes-her-list"></div></div>
+            <div class="category-column"><h2>Handbags</h2><details class="category-filter" data-category-filter="handbags"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="handbags-list"></div></div>
         </div>
         <div id="wardrobe-him" class="board-container">
-            <div class="category-column"><h2>Jackets</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="jackets-him" aria-label="Filter his jackets by color"><option value="">All colors</option></select></label><div class="tile-list" id="jackets-him-list"></div></div>
-            <div class="category-column"><h2>Waistcoats</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="waistcoats" aria-label="Filter waistcoats by color"><option value="">All colors</option></select></label><div class="tile-list" id="waistcoats-list"></div></div>
-            <div class="category-column"><h2>Shirts</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="shirts" aria-label="Filter shirts by color"><option value="">All colors</option></select></label><div class="tile-list" id="shirts-list"></div></div>
-            <div class="category-column"><h2>Trousers</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="trousers" aria-label="Filter trousers by color"><option value="">All colors</option></select></label><div class="tile-list" id="trousers-list"></div></div>
-            <div class="category-column"><h2>Shoes</h2><label class="category-filter-label">Filter by color<select class="category-filter" data-category-filter="shoes-him" aria-label="Filter his shoes by color"><option value="">All colors</option></select></label><div class="tile-list" id="shoes-him-list"></div></div>
-        </div>
-        <div class="add-item-form">
-            <input type="text" id="item-name" placeholder="Item name">
-            <select id="item-category">
-                <optgroup label="Her Clothes">
-                    <option value="dresses">Dresses</option>
-                    <option value="jackets-her">Jackets (Her)</option>
-                    <option value="shoes-her">Shoes (Her)</option>
-                    <option value="handbags">Handbags</option>
-                </optgroup>
-                <optgroup label="His Clothes">
-                    <option value="jackets-him">Jackets (Him)</option>
-                    <option value="waistcoats">Waistcoats</option>
-                    <option value="shirts">Shirts</option>
-                    <option value="trousers">Trousers</option>
-                    <option value="shoes-him">Shoes (Him)</option>
-                </optgroup>
-            </select>
-            <div class="color-checkbox-container"><div id="item-color-checkboxes"></div></div>
-            <button data-action="add-item">➕ Add Tile</button>
+            <div class="category-column"><h2>Jackets</h2><details class="category-filter" data-category-filter="jackets-him"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="jackets-him-list"></div></div>
+            <div class="category-column"><h2>Waistcoats</h2><details class="category-filter" data-category-filter="waistcoats"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="waistcoats-list"></div></div>
+            <div class="category-column"><h2>Shirts</h2><details class="category-filter" data-category-filter="shirts"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="shirts-list"></div></div>
+            <div class="category-column"><h2>Trousers</h2><details class="category-filter" data-category-filter="trousers"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="trousers-list"></div></div>
+            <div class="category-column"><h2>Shoes</h2><details class="category-filter" data-category-filter="shoes-him"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="shoes-him-list"></div></div>
         </div>
     </main>
 
@@ -63,7 +42,8 @@
         <div class="itinerary-container">
             <h2>📅 Night Itinerary Planner</h2>
             <div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.05)">
-                <label>Cruise Duration: <select id="dur-select"><option value="3">3 Nights</option><option value="5">5 Nights</option><option value="7" selected>7 Nights</option><option value="10">10 Nights</option><option value="14">14 Nights</option></select></label>
+                <label>Cruise Duration: <select id="dur-select"><option value="5">5 Nights</option><option value="7" selected>7 Nights</option><option value="10">10 Nights</option><option value="12">12 Nights</option></select></label>
+                <button type="button" class="packing-list-button" data-action="print-packing-list">🖨️ Print Packing List / Save as PDF</button>
             </div>
             <div id="dynamic-itinerary-cards"></div>
         </div>
@@ -73,9 +53,42 @@
         </div></div>
     </main>
 
+    <section id="packing-list-report" class="packing-list-report" aria-hidden="true"></section>
+
     <!-- SCREEN 3: LABEL SETTINGS -->
     <main id="settings-screen" class="screen-view">
         <div class="settings-container">
+            <h2>👕 Add Clothing Item</h2>
+            <div class="add-item-form">
+                <input type="text" id="item-name" placeholder="Item name">
+                <select id="item-category" aria-label="Clothing category">
+                    <optgroup label="Her Clothes">
+                        <option value="dresses">Dresses</option>
+                        <option value="jackets-her">Jackets (Her)</option>
+                        <option value="shoes-her">Shoes (Her)</option>
+                        <option value="handbags">Handbags</option>
+                    </optgroup>
+                    <optgroup label="His Clothes">
+                        <option value="jackets-him">Jackets (Him)</option>
+                        <option value="waistcoats">Waistcoats</option>
+                        <option value="shirts">Shirts</option>
+                        <option value="trousers">Trousers</option>
+                        <option value="shoes-him">Shoes (Him)</option>
+                    </optgroup>
+                </select>
+                <div class="color-checkbox-container"><div id="item-color-checkboxes"></div></div>
+                <button data-action="add-item">➕ Add Tile</button>
+            </div>
+
+            <h2>🧳 Suitcase Names</h2>
+            <div class="suitcase-name-form">
+                <label for="suitcase-a-name-input">Suitcase A</label>
+                <input type="text" id="suitcase-a-name-input" maxlength="40" placeholder="e.g. Beige">
+                <label for="suitcase-b-name-input">Suitcase B</label>
+                <input type="text" id="suitcase-b-name-input" maxlength="40" placeholder="e.g. Black">
+                <button type="button" data-action="save-suitcase-names">Save Suitcase Names</button>
+            </div>
+
             <h2>🎨 Custom Sticker Labels</h2>
             <div class="add-label-form">
                 <input type="text" id="lbl-name" placeholder="Label Title">
@@ -85,18 +98,6 @@
             <h3>Active Labels</h3><div id="labels-grid" class="labels-grid"></div>
             <h3 style="margin-top:40px;border-top:1px solid #e2e8f0;padding-top:20px">💾 Backup Data</h3>
             <div style="display:flex;gap:15px"><button data-action="export-data" style="background:#4b5563;color:#fff">📤 Export File</button><label style="background:#0284c7;color:#fff;padding:10px;border-radius:6px;cursor:pointer">📥 Import File<input type="file" id="import-file-picker" accept=".json" style="display:none"></label></div>
-        </div>
-    </main>
-
-    <!-- SCREEN 4: SUITCASE PACKER -->
-    <main id="suitcase-screen" class="screen-view">
-        <div style="max-width:1200px;margin:0 auto">
-            <h2>🧳 Suitcase Allocation Dashboard</h2>
-            <div class="suitcase-columns">
-                <div style="background:#e2e8f0;border-radius:8px;padding:15px"><h3>⚓ Unpacked Items</h3><div id="unpacked-dock-list" class="tile-list"></div></div>
-                <div style="background:#fee2e2;border-radius:8px;padding:15px;border-top:4px solid #ef4444"><h3>🧳 Suitcase A</h3><div id="suitcase-a-list" class="tile-list"></div></div>
-                <div style="background:#dbeafe;border-radius:8px;padding:15px;border-top:4px solid #3b82f6"><h3>🧳 Suitcase B</h3><div id="suitcase-b-list" class="tile-list"></div></div>
-            </div>
         </div>
     </main>
 
