@@ -1,0 +1,92 @@
+/* APPLICATION UNIVERSAL STYLES */
+body { font-family: Arial, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+header { text-align: center; margin-bottom: 20px; }
+h1 { color: #1a365d; margin-bottom: 15px; }
+.main-nav, .gender-tabs, .outfit-slots { display: flex; gap: 10px; justify-content: center; }
+button, .slot, select, input { padding: 10px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
+.nav-btn.active, .tab-btn.active { background: #1a365d !important; color: #fff !important; }
+.screen-view, .board-container { display: none; }
+.screen-view.active, .board-container.active { display: block; }
+
+/* CLOSET STRUCTURE GRID */
+.board-container.active { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1400px; margin: 15px auto 0; }
+.category-column { background: #2d3748; border-radius: 8px; padding: 15px; color: #fff; }
+.category-column h2 { font-size: 1.1rem; margin: 0 0 15px; text-align: center; border-bottom: 2px solid #4a5568; padding-bottom: 10px; }
+.tile-list { display: flex; flex-direction: column; gap: 10px; min-height: 150px; }
+
+/* THE DYNAMIC TILES */
+.tile { padding: 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); position: relative; overflow: hidden; padding-left: 20px; background: #fff; color: #000; }
+.tile::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 10px; background: var(--tags, #fff); }
+
+/* WARDROBE CONTROLS & CHECKBOXES */
+.add-item-form { max-width: 800px; margin: 0 auto 25px auto; background: #fff; padding: 15px; border-radius: 8px; display: flex; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); align-items: center; }
+.add-item-form input { flex-grow: 2; }
+.add-item-form button { background: #10b981; color: #fff; }
+.color-checkbox-container { display: flex; flex-direction: column; gap: 5px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; min-width: 180px; max-height: 110px; overflow-y: auto; text-align: left; }
+.checkbox-title { font-size: 0.75rem; font-weight: bold; color: #64748b; text-transform: uppercase; }
+.checkbox-scroller { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+#item-color-checkboxes { display: flex; flex-direction: column; align-items: flex-start; }
+.color-checkbox-item { display: flex; width: 100%; align-items: center; justify-content: flex-start; gap: 8px; font-size: 0.85rem; font-weight: bold; text-align: left; cursor: pointer; }
+.color-checkbox-item input[type="checkbox"] { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; padding: 0; }
+.category-filter-label { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; color: #e2e8f0; font-size: 0.8rem; }
+.category-filter { width: 100%; background: #fff; color: #333; }
+
+/* EVENING PLANNER TIMELINE */
+.itinerary-container { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.night-card { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.night-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; }
+.night-header h3 { margin: 0; color: #1a365d; }
+.planner-rows { display: flex; flex-direction: column; gap: 15px; }
+.row { display: flex; align-items: center; gap: 15px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid transparent; margin-bottom: 10px; }
+.her-row { border-left-color: #ec4899; } .him-row { border-left-color: #3b82f6; }
+.row-label { font-weight: bold; width: 110px; font-size: 0.9rem; }
+.outfit-slots { display: flex; gap: 10px; flex-grow: 1; }
+.slot { flex: 1; background: #fff; border: 2px dashed #cbd5e1; border-radius: 6px; padding: 12px; text-align: center; font-size: 0.85rem; color: #94a3b8; min-height: 44px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.slot.filled { border-style: solid; border-width: 1px; color: #000; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding-left: 15px; position: relative; overflow: hidden; }
+
+/* MODAL SELECTION POPUPS */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.active { display: flex; }
+.modal-content { background: white; width: 100%; max-width: 600px; border-radius: 12px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 80vh; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+.modal-tiles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto; margin: 15px 0; }
+.settings-container { max-width: 700px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.add-label-form { background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px; }
+.labels-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
+.label-config-card { background: #f1f5f9; padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 10px; align-items: center; border: 1px solid #cbd5e1; }
+.suitcase-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.wardrobe-tile { display: flex; align-items: center; justify-content: center; gap: 8px; padding-right: 36px; }
+.tile-delete { position: absolute; right: 4px; top: 4px; padding: 2px 6px; background: rgba(15, 23, 42, 0.12); color: inherit; font-size: 1.1rem; line-height: 1; }
+.picker-tile, .suitcase-tile { width: 100%; }
+.picker-tile { text-align: center; }
+.suitcase-tile { color: inherit; }
+.slot-tag { position: absolute; top: 0; left: 0; bottom: 0; width: 8px; background: var(--tags, #fff); }
+.slot.filled { padding-left: 15px; }
+.color-swatch { display: inline-block; width: 12px; height: 12px; border: 1px solid #cbd5e1; margin: 0 4px; }
+.filter-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+.label-preview { width: 130px; }
+.label-delete { background: #ef4444; color: #fff; padding: 4px; border-radius: 4px; }
+.empty-picker-message, .empty-suitcase-message { grid-column: 1 / -1; text-align: center; color: #64748b; padding: 20px; }
+button:focus-visible, input:focus-visible, select:focus-visible, .tile:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+    body { padding: 12px; }
+    .main-nav { flex-wrap: wrap; }
+    .add-item-form { flex-wrap: wrap; }
+    .add-item-form input, .add-item-form select { flex: 1 1 180px; }
+    .suitcase-columns { grid-template-columns: 1fr; }
+    .row { align-items: stretch; flex-direction: column; gap: 8px; }
+    .row-label { width: auto; }
+    .outfit-slots { justify-content: flex-start; flex-wrap: wrap; }
+    .slot { flex: 1 1 120px; }
+}
+
+@media (max-width: 420px) {
+    .main-nav button, .gender-tabs button { flex: 1 1 100%; }
+    .modal-overlay { padding: 10px; }
+    .modal-content { padding: 14px; }
+}
