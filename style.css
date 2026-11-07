@@ -38,10 +38,19 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 /* EVENING PLANNER TIMELINE */
 .itinerary-container { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 .night-card { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.night-reorder-hint { margin: -12px 0 0; color: #64748b; font-size: 0.9rem; }
+.cruise-details-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.cruise-details-form label { display: flex; flex-direction: column; gap: 5px; font-weight: bold; }
+.cruise-details-form input, .cruise-details-form select { min-width: 0; width: 100%; box-sizing: border-box; }
 .packing-list-button { margin-left: 12px; background: #1a365d; color: #fff; }
 .packing-list-report { display: none; }
+.night-card-dragging { opacity: 0.45; }
+.night-card-drop-target { outline: 2px dashed #2563eb; outline-offset: 3px; }
 .night-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; }
+.night-title-group { display: flex; align-items: center; gap: 8px; }
 .night-header h3 { margin: 0; color: #1a365d; }
+.night-drag-handle { padding: 4px 8px; background: #e2e8f0; color: #475569; cursor: grab; }
+.night-drag-handle:active { cursor: grabbing; }
 .planner-rows { display: flex; flex-direction: column; gap: 15px; }
 .row { display: flex; align-items: center; gap: 15px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid transparent; margin-bottom: 10px; }
 .her-row { border-left-color: #ec4899; } .him-row { border-left-color: #3b82f6; }
@@ -62,6 +71,12 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 #settings-screen .add-item-form input:not([type="checkbox"]), #settings-screen .add-item-form select { flex: 1 1 180px; min-width: 0; }
 .suitcase-name-form { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; margin-bottom: 30px; }
 .suitcase-name-form button { grid-column: 1 / -1; justify-self: start; background: #3b82f6; color: #fff; }
+.cruise-ship-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.cruise-ship-form label { flex: 0 0 100%; font-weight: bold; }
+.cruise-ship-form input { flex: 1 1 240px; min-width: 0; }
+.cruise-ship-form button { background: #3b82f6; color: #fff; }
+.cruise-ship-list { margin: 0 0 30px; padding: 0; list-style: none; }
+.cruise-ship-list li { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
 .add-label-form { background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px; }
 .labels-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
 .label-config-card { background: #f1f5f9; padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 10px; align-items: center; border: 1px solid #cbd5e1; }
@@ -107,17 +122,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, .tile:focus-vis
 @media print {
     body { margin: 0; padding: 0; background: #fff; color: #111; }
     body > *:not(#packing-list-report) { display: none !important; }
-    #packing-list-report { display: block !important; font-size: 7pt; line-height: 1.1; }
-    .packing-list-title { margin: 0; font-size: 14pt; }
-    .packing-list-subtitle { margin: 2px 0 6px; color: #475569; }
+    #packing-list-report { display: block !important; font-size: 7pt; line-height: 1.05; }
+    .packing-list-title { margin: 0; font-size: 12pt; }
+    .packing-list-subtitle { margin: 2px 0 4px; color: #334155; font-size: 9pt; font-weight: 600; }
     .packing-list-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-    .packing-list-table th, .packing-list-table td { padding: 2px 4px; border: 1px solid #cbd5e1; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    .packing-list-table th, .packing-list-table td { padding: 4px 3px; border: 1px solid #cbd5e1; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
     .packing-list-table thead th { background: #f1f5f9; }
-    .packing-list-table thead th:nth-child(1) { width: 9%; }
-    .packing-list-table thead th:nth-child(2), .packing-list-table thead th:nth-child(3) { width: 45.5%; }
-    .packing-case-heading th { padding-top: 3px; padding-bottom: 3px; background: #e2e8f0; font-size: 8pt; }
+    .packing-list-table thead th:nth-child(1) { width: 6%; }
+    .packing-list-table thead th:nth-child(2) { width: 11%; }
+    .packing-list-table thead th:nth-child(3) { width: 83%; }
+    .packing-list-table .packing-outfit-label { font-weight: 600; }
+    .packing-list-table .packing-outfit-him th, .packing-list-table .packing-outfit-him td { border-top-style: dashed; }
+    .packing-item-list { display: flex; flex-wrap: wrap; gap: 1px; }
+    .packing-item-box { display: inline-block; padding: 1px 3px; border: 1px solid #94a3b8; border-radius: 2px; font-size: 8pt; line-height: 1.1; overflow-wrap: anywhere; break-inside: avoid; }
+    .packing-case-heading th { padding-top: 2px; padding-bottom: 2px; border-top: 2px solid #334155; border-bottom: 2px solid #334155; background: #e2e8f0; font-size: 7pt; }
     .packing-case-a .packing-case-heading th { background: #fee2e2; }
     .packing-case-b .packing-case-heading th { background: #dbeafe; }
     .packing-case-unassigned .packing-case-heading th { background: #fef3c7; }
     .packing-list-table tbody tr:not(.packing-case-heading) { break-inside: avoid; }
+    .packing-list-duration-7 .packing-outfit-row { height: 44px; }
 }

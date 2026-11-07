@@ -41,7 +41,13 @@
     <main id="itinerary-screen" class="screen-view">
         <div class="itinerary-container">
             <h2>📅 Night Itinerary Planner</h2>
+            <p class="night-reorder-hint">Drag the ↕ handle beside a night to change the order. Its outfits, dress code, and suitcase assignments move with it.</p>
             <div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.05)">
+                <div class="cruise-details-form">
+                    <label for="cruise-date-input">Cruise date(s)<input type="text" id="cruise-date-input" maxlength="120" placeholder="e.g. 12–19 July 2027"></label>
+                    <label for="cruise-destinations-input">Destinations<input type="text" id="cruise-destinations-input" maxlength="300" placeholder="e.g. Barcelona, Lisbon, Madeira"></label>
+                    <label for="cruise-ship-select">Cruise ship<select id="cruise-ship-select"></select></label>
+                </div>
                 <label>Cruise Duration: <select id="dur-select"><option value="5">5 Nights</option><option value="7" selected>7 Nights</option><option value="10">10 Nights</option><option value="12">12 Nights</option></select></label>
                 <button type="button" class="packing-list-button" data-action="print-packing-list">🖨️ Print Packing List / Save as PDF</button>
             </div>
@@ -88,6 +94,14 @@
                 <input type="text" id="suitcase-b-name-input" maxlength="40" placeholder="e.g. Black">
                 <button type="button" data-action="save-suitcase-names">Save Suitcase Names</button>
             </div>
+
+            <h2>🚢 Cruise Ships</h2>
+            <div class="cruise-ship-form">
+                <label for="cruise-ship-name-input">Add a cruise ship</label>
+                <input type="text" id="cruise-ship-name-input" maxlength="80" placeholder="Cruise line and ship name">
+                <button type="button" data-action="add-cruise-ship">Add Cruise Ship</button>
+            </div>
+            <ul id="cruise-ship-list" class="cruise-ship-list"></ul>
 
             <h2>🎨 Custom Sticker Labels</h2>
             <div class="add-label-form">
