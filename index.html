@@ -11,7 +11,8 @@
         <h1>🚢 Cruise Packing App</h1>
         <nav class="main-nav">
             <button class="nav-btn active" data-screen="wardrobe-screen">The Wardrobes</button>
-            <button class="nav-btn" data-screen="itinerary-screen">Evening Planner</button>
+            <button class="nav-btn" data-screen="cruises-screen">Cruises</button>
+            <button class="nav-btn" data-screen="help-screen">Help</button>
             <button class="nav-btn" data-screen="settings-screen">Settings</button>
         </nav>
     </header>
@@ -27,6 +28,7 @@
             <div class="category-column"><h2>Jackets</h2><details class="category-filter" data-category-filter="jackets-her"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="jackets-her-list"></div></div>
             <div class="category-column"><h2>Shoes</h2><details class="category-filter" data-category-filter="shoes-her"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="shoes-her-list"></div></div>
             <div class="category-column"><h2>Handbags</h2><details class="category-filter" data-category-filter="handbags"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="handbags-list"></div></div>
+            <div class="category-column"><h2>Walking Stick</h2><details class="category-filter" data-category-filter="walking-stick"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="walking-stick-list"></div></div>
         </div>
         <div id="wardrobe-him" class="board-container">
             <div class="category-column"><h2>Jackets</h2><details class="category-filter" data-category-filter="jackets-him"><summary>Filter colours: All</summary><div class="category-filter-options"></div></details><div class="tile-list" id="jackets-him-list"></div></div>
@@ -37,14 +39,30 @@
         </div>
     </main>
 
-    <!-- SCREEN 2: EVENING PLANNER -->
+    <!-- SCREEN 2: CRUISE LIST -->
+    <main id="cruises-screen" class="screen-view">
+        <div class="cruise-list-container">
+            <h2>Future Cruises</h2>
+            <div id="future-cruises-list" class="cruise-list"></div>
+            <h2>Past Cruises</h2>
+            <div id="past-cruises-list" class="cruise-list"></div>
+            <section class="add-cruise-section">
+                <h2>Add New</h2>
+                <button type="button" data-action="add-cruise">➕ Add a new Cruise</button>
+            </section>
+        </div>
+    </main>
+
+    <!-- SCREEN 3: EVENING PLANNER -->
     <main id="itinerary-screen" class="screen-view">
         <div class="itinerary-container">
+            <button type="button" class="back-to-cruises" data-action="back-to-cruises">← Back to Cruises</button>
             <h2>📅 Night Itinerary Planner</h2>
             <p class="night-reorder-hint">Drag the ↕ handle beside a night to change the order. Its outfits, dress code, and suitcase assignments move with it.</p>
             <div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;box-shadow:0 2px 4px rgba(0,0,0,0.05)">
                 <div class="cruise-details-form">
-                    <label for="cruise-date-input">Cruise date(s)<input type="text" id="cruise-date-input" maxlength="120" placeholder="e.g. 12–19 July 2027"></label>
+                    <label for="cruise-start-date-input">Departure date<input type="date" id="cruise-start-date-input"></label>
+                    <label for="cruise-end-date-input">Return date<input type="date" id="cruise-end-date-input"></label>
                     <label for="cruise-destinations-input">Destinations<input type="text" id="cruise-destinations-input" maxlength="300" placeholder="e.g. Barcelona, Lisbon, Madeira"></label>
                     <label for="cruise-ship-select">Cruise ship<select id="cruise-ship-select"></select></label>
                 </div>
@@ -61,7 +79,49 @@
 
     <section id="packing-list-report" class="packing-list-report" aria-hidden="true"></section>
 
-    <!-- SCREEN 3: LABEL SETTINGS -->
+    <!-- SCREEN 4: HELP -->
+    <main id="help-screen" class="screen-view">
+        <div class="help-container">
+            <h2>Using the Cruise Packing App</h2>
+            <p>Plan outfits for each cruise, keep track of your wardrobe, and print a packing list organized by suitcase.</p>
+
+            <section>
+                <h3>1. Build your wardrobes</h3>
+                <p>Open <strong>Settings</strong> and use <strong>Add Clothing Item</strong> to add an item by name and category. Select one or more colour labels to show on the item, then choose <strong>Add Tile</strong>. Items appear under their category in <strong>The Wardrobes</strong>.</p>
+                <p>Her wardrobe includes dresses, jackets, shoes, handbags, and walking sticks. His wardrobe includes jackets, waistcoats, shirts, trousers, and shoes. In the wardrobe, use the Her/Him buttons to switch wardrobes. Use <strong>Filter colours</strong> on a category to show items with selected labels. Each tile has a delete button.</p>
+            </section>
+
+            <section>
+                <h3>2. Add and manage cruises</h3>
+                <p>Open <strong>Cruises</strong> and choose <strong>Add a new Cruise</strong> to create a cruise and open its planner. Enter departure and return dates, destinations, ship, and duration. Cruise details and plans save automatically in this browser.</p>
+                <p>The Cruises page lists future cruises by nearest departure first and completed cruises by most recent return first. Each row shows dates, duration, ship, and destinations. Choose <strong>View</strong> to open a cruise's planner, or <strong>Delete Cruise</strong> and confirm to remove it.</p>
+            </section>
+
+            <section>
+                <h3>3. Plan nightly outfits</h3>
+                <p>In a cruise planner, select a clothing slot in either person's row and choose a wardrobe item. Choose a suitcase for each person's outfit. Select Formal or Gala for each night's dress code. Use <strong>Copy Outfit</strong> beside a night to copy the selected items for both people to the first completely empty night of another future cruise.</p>
+                <p>Drag a night by its ↕ handle to reorder the planner. You can also focus the handle and press the up or down arrow keys. The outfits, dress codes, and suitcase assignments move with the night.</p>
+            </section>
+
+            <section>
+                <h3>4. Print a packing list</h3>
+                <p>Choose <strong>Print Packing List / Save as PDF</strong> in a cruise planner. The print view groups each night’s outfits by suitcase and includes any outfits that have not been assigned to a suitcase. Use your browser’s print dialog to print or save as PDF.</p>
+            </section>
+
+            <section>
+                <h3>5. Customize Settings and backups</h3>
+                <p>In <strong>Settings</strong>, rename the default suitcases, or use <strong>Add Suitcase</strong> to create more named suitcases. All suitcases can be assigned to outfits and appear in packing lists. Add cruise ships to the ship choices, and create custom sticker labels by setting a name, background colour, and tag colour. Active labels can be deleted.</p>
+                <p>Use <strong>Export File</strong> to download a backup of wardrobes, labels, suitcase names, ships, and all cruise plans. <strong>Import File</strong> replaces the current app data after confirmation; export a backup first if you may want to keep the existing data.</p>
+            </section>
+
+            <section>
+                <h3>Data and privacy</h3>
+                <p>App data is stored in this browser on this device. It is not automatically synchronized to other devices. Browser storage can be cleared by the browser or device, so export backups regularly if you want to preserve your plans.</p>
+            </section>
+        </div>
+    </main>
+
+    <!-- SCREEN 5: SETTINGS -->
     <main id="settings-screen" class="screen-view">
         <div class="settings-container">
             <h2>👕 Add Clothing Item</h2>
@@ -73,6 +133,7 @@
                         <option value="jackets-her">Jackets (Her)</option>
                         <option value="shoes-her">Shoes (Her)</option>
                         <option value="handbags">Handbags</option>
+                        <option value="walking-stick">Walking Stick</option>
                     </optgroup>
                     <optgroup label="His Clothes">
                         <option value="jackets-him">Jackets (Him)</option>
@@ -88,11 +149,11 @@
 
             <h2>🧳 Suitcase Names</h2>
             <div class="suitcase-name-form">
-                <label for="suitcase-a-name-input">Suitcase A</label>
-                <input type="text" id="suitcase-a-name-input" maxlength="40" placeholder="e.g. Beige">
-                <label for="suitcase-b-name-input">Suitcase B</label>
-                <input type="text" id="suitcase-b-name-input" maxlength="40" placeholder="e.g. Black">
-                <button type="button" data-action="save-suitcase-names">Save Suitcase Names</button>
+                <div id="suitcase-names-list" class="suitcase-names-list"></div>
+                <div class="suitcase-actions">
+                    <button type="button" data-action="add-suitcase">➕ Add Suitcase</button>
+                    <button type="button" data-action="save-suitcase-names">Save Suitcase Names</button>
+                </div>
             </div>
 
             <h2>🚢 Cruise Ships</h2>

@@ -8,6 +8,21 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .nav-btn.active, .tab-btn.active { background: #1a365d !important; color: #fff !important; }
 .screen-view, .board-container { display: none; }
 .screen-view.active, .board-container.active { display: block; }
+.cruise-list-container { max-width: 1000px; margin: 0 auto; }
+.cruise-list-container > h2 { color: #1a365d; }
+.cruise-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+.cruise-entry { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 15px; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.cruise-entry-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; flex: 1; }
+.cruise-entry-details p { margin: 0; overflow-wrap: anywhere; }
+.cruise-view-button, .add-cruise-section button, .back-to-cruises { background: #1a365d; color: #fff; }
+.cruise-delete-button { background: #dc2626; color: #fff; }
+.empty-cruises-message { color: #64748b; }
+.add-cruise-section { padding-top: 5px; }
+.night-title-group { flex-wrap: wrap; }
+.copy-outfit-button { padding: 7px 10px; background: #3b82f6; color: #fff; }
+.copy-outfit-button:disabled { opacity: 0.55; cursor: not-allowed; }
+.copy-cruise-select { max-width: 220px; }
+.back-to-cruises { margin-bottom: 8px; }
 
 /* CLOSET STRUCTURE GRID */
 .board-container.active { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1400px; margin: 15px auto 0; }
@@ -46,7 +61,7 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .packing-list-report { display: none; }
 .night-card-dragging { opacity: 0.45; }
 .night-card-drop-target { outline: 2px dashed #2563eb; outline-offset: 3px; }
-.night-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; }
+.night-header { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; }
 .night-title-group { display: flex; align-items: center; gap: 8px; }
 .night-header h3 { margin: 0; color: #1a365d; }
 .night-drag-handle { padding: 4px 8px; background: #e2e8f0; color: #475569; cursor: grab; }
@@ -67,10 +82,19 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
 .modal-tiles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; overflow-y: auto; margin: 15px 0; }
 .settings-container { max-width: 700px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.help-container { max-width: 900px; margin: 0 auto; padding: 25px; border-radius: 8px; background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.help-container h2, .help-container h3 { color: #1a365d; }
+.help-container section { margin-top: 24px; padding-top: 4px; border-top: 1px solid #e2e8f0; }
+.help-container p { line-height: 1.6; }
 #settings-screen .add-item-form { max-width: none; margin: 0 0 30px; flex-wrap: wrap; }
 #settings-screen .add-item-form input:not([type="checkbox"]), #settings-screen .add-item-form select { flex: 1 1 180px; min-width: 0; }
-.suitcase-name-form { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; margin-bottom: 30px; }
-.suitcase-name-form button { grid-column: 1 / -1; justify-self: start; background: #3b82f6; color: #fff; }
+.suitcase-name-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
+.suitcase-names-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.suitcase-name-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.suitcase-name-row label { font-weight: bold; }
+.suitcase-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.suitcase-actions button[data-action="add-suitcase"] { background: #10b981; color: #fff; }
+.suitcase-actions button[data-action="save-suitcase-names"] { background: #3b82f6; color: #fff; }
 .cruise-ship-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .cruise-ship-form label { flex: 0 0 100%; font-weight: bold; }
 .cruise-ship-form input { flex: 1 1 240px; min-width: 0; }
@@ -106,6 +130,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, .tile:focus-vis
     .outfit-slots { justify-content: flex-start; flex-wrap: wrap; }
     .slot { flex: 1 1 120px; }
     .outfit-case-select { flex-basis: auto; width: 100%; }
+    .cruise-entry { align-items: stretch; flex-direction: column; gap: 12px; }
+    .cruise-entry-details { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 420px) {

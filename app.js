@@ -1,7 +1,11 @@
 let sex = 'her';
 let filt = {};
 let actSlot = null;
-const defaultSuitcaseNames = { a: 'Suitcase A', b: 'Suitcase B' };
+let activeCruiseId = null;
+const defaultSuitcaseNames = [
+    { id: 'a', name: 'Suitcase A' },
+    { id: 'b', name: 'Suitcase B' }
+];
 
 const defL = [
     { id: 'l_wh', name: 'White', bg: '#fff', tag: '#fff' },
@@ -14,7 +18,7 @@ const defL = [
 ];
 
 const categories = [
-    'dresses', 'jackets-her', 'shoes-her', 'handbags', 'jackets-him',
+    'dresses', 'jackets-her', 'shoes-her', 'handbags', 'walking-stick', 'jackets-him',
     'waistcoats', 'shirts', 'trousers', 'shoes-him'
 ];
 const cruiseDurations = ['5', '7', '10', '12'];
@@ -30,6 +34,154 @@ function readData(key, fallback) {
     return JSON.parse(localStorage.getItem(key)) || fallback;
 }
 
+function createCruiseId() {
+    return `cruise_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function validISODate(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(0);
+    date.setFullYear(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return dateToISO(date) === value;
+}
+
+function parseLegacyCruiseDates(value) {
+    if (!value) return {};
+    const dayRange = value.match(/^\s*(\d{1,2})\s*[-–—]\s*(\d{1,2})\s+([a-z]+)\s+(\d{4})\s*$/i);
+    if (dayRange) {
+        const [, firstDay, lastDay, month, year] = dayRange;
+        const startDate = new Date(`${month} ${firstDay}, ${year}`);
+        const endDate = new Date(`${month} ${lastDay}, ${year}`);
+        if (startDate.getDate() === Number(firstDay) && endDate.getDate() === Number(lastDay)
+            && startDate <= endDate
+            && !Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime())) {
+            return {
+                startDate: dateToISO(startDate),
+                endDate: dateToISO(endDate)
+            };
+        }
+    }
+
+    const separator = value.match(/^(.+?)\s*(?:–|—|\bto\b)\s*(.+)$/i);
+    if (separator) {
+        const startDate = new Date(separator[1]);
+        const endDate = new Date(separator[2]);
+        if (!Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime())
+            && startDate <= endDate) {
+            return {
+                startDate: dateToISO(startDate),
+                endDate: dateToISO(endDate)
+            };
+        }
+    }
+
+    if (validISODate(value)) return { startDate: value, endDate: value };
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+        const dateString = dateToISO(date);
+        return { startDate: dateString, endDate: dateString };
+    }
+    return { legacyDate: value };
+}
+
+function getCruises() {
+    const cruises = readData('c_cruises', []);
+    if (!Array.isArray(cruises)) throw new Error('Stored cruise data is invalid.');
+    return cruises;
+}
+
+function makeCruise(details = {}) {
+    return {
+        id: details.id || createCruiseId(),
+        startDate: details.startDate || '',
+        endDate: details.endDate || '',
+        legacyDate: details.legacyDate || '',
+        duration: details.duration || '7',
+        ship: details.ship || '',
+        destinations: details.destinations || '',
+        plans: details.plans || {},
+        codes: details.codes || {},
+        outfitCases: details.outfitCases || {}
+    };
+}
+
+function saveCruises(cruises) {
+    localStorage.setItem('c_cruises', JSON.stringify(cruises));
+}
+
+function saveActiveCruise() {
+    if (!activeCruiseId) return;
+    const cruises = getCruises();
+    const index = cruises.findIndex(cruise => cruise.id === activeCruiseId);
+    if (index < 0) return;
+    const startDate = localStorage.getItem('c_cruiseStartDate') || '';
+    const endDate = localStorage.getItem('c_cruiseEndDate') || '';
+    cruises[index] = {
+        ...cruises[index],
+        startDate,
+        endDate,
+        legacyDate: startDate || endDate ? '' : (cruises[index].legacyDate || ''),
+        duration: localStorage.getItem('c_d') || '7',
+        ship: localStorage.getItem('c_ship') || '',
+        destinations: localStorage.getItem('c_destinations') || '',
+        plans: readData('c_p', {}),
+        codes: readData('c_c', {}),
+        outfitCases: readData('c_outfitCases', {})
+    };
+    saveCruises(cruises);
+}
+
+function loadCruise(cruise) {
+    activeCruiseId = cruise.id;
+    localStorage.setItem('c_activeCruiseId', cruise.id);
+    localStorage.setItem('c_d', String(cruise.duration));
+    localStorage.setItem('c_ship', cruise.ship);
+    localStorage.setItem('c_destinations', cruise.destinations);
+    localStorage.setItem('c_cruiseStartDate', cruise.startDate);
+    localStorage.setItem('c_cruiseEndDate', cruise.endDate);
+    localStorage.setItem('c_cruiseDate', cruiseDateLabel(cruise));
+    localStorage.setItem('c_p', JSON.stringify(cruise.plans));
+    localStorage.setItem('c_c', JSON.stringify(cruise.codes));
+    localStorage.setItem('c_outfitCases', JSON.stringify(cruise.outfitCases));
+    applyCruiseDetailsToUI();
+}
+
+function migrateLegacyCruise() {
+    const legacyKeys = [
+        'c_p', 'c_c', 'c_d', 'c_outfitCases', 'c_cruiseDate', 'c_destinations', 'c_ship'
+    ];
+    if (!legacyKeys.some(key => localStorage.getItem(key) !== null)) return [];
+
+    const legacyDate = localStorage.getItem('c_cruiseDate') || '';
+    const cruise = makeCruise({
+        ...parseLegacyCruiseDates(legacyDate),
+        duration: getCruiseDuration(),
+        ship: localStorage.getItem('c_ship') || '',
+        destinations: localStorage.getItem('c_destinations') || '',
+        plans: readData('c_p', {}),
+        codes: readData('c_c', {}),
+        outfitCases: readData('c_outfitCases', {})
+    });
+    localStorage.setItem('c_activeCruiseId', cruise.id);
+    return [cruise];
+}
+
+function initializeCruises() {
+    let cruises;
+    if (localStorage.getItem('c_cruises') === null) {
+        cruises = migrateLegacyCruise();
+        saveCruises(cruises);
+    } else {
+        cruises = getCruises();
+    }
+    const storedActiveId = localStorage.getItem('c_activeCruiseId');
+    const activeCruise = cruises.find(cruise => cruise.id === storedActiveId) || cruises[0];
+    if (activeCruise) loadCruise(activeCruise);
+    else activeCruiseId = null;
+}
+
 function getCruiseDuration() {
     const storedDuration = localStorage.getItem('c_d') || '7';
     const duration = cruiseDurations.includes(storedDuration)
@@ -42,7 +194,11 @@ function getCruiseDuration() {
 function goScrn(id, button) {
     document.querySelectorAll('.screen-view, .nav-btn').forEach(element => element.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    button.classList.add('active');
+    const navButton = button?.classList.contains('nav-btn')
+        ? button
+        : document.querySelector(`.nav-btn[data-screen="${id === 'itinerary-screen' ? 'cruises-screen' : id}"]`);
+    navButton?.classList.add('active');
+    if (id === 'cruises-screen') buildCruises();
     if (id === 'itinerary-screen') buildItin();
 }
 
@@ -52,6 +208,142 @@ function goWard(owner) {
     document.getElementById(`wardrobe-${owner}`).classList.add('active');
     document.getElementById(`tab-${owner}`).classList.add('active');
     loadWard();
+}
+
+function dateToISO(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${String(year).padStart(4, '0')}-${month}-${day}`;
+}
+
+function todayISO() {
+    return dateToISO(new Date());
+}
+
+function formatCruiseDate(value) {
+    if (!validISODate(value)) return '';
+    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+function cruiseDateLabel(cruise) {
+    if (cruise.startDate && cruise.endDate) {
+        return `${formatCruiseDate(cruise.startDate)} – ${formatCruiseDate(cruise.endDate)}`;
+    }
+    if (cruise.startDate) return `From ${formatCruiseDate(cruise.startDate)}`;
+    if (cruise.endDate) return `Return ${formatCruiseDate(cruise.endDate)}`;
+    return cruise.legacyDate || 'Dates not set';
+}
+
+function buildCruises() {
+    const today = todayISO();
+    const cruises = getCruises();
+    const future = cruises.filter(cruise => !cruise.endDate || cruise.endDate >= today)
+        .sort((a, b) => (a.startDate || '9999-12-31').localeCompare(b.startDate || '9999-12-31'));
+    const past = cruises.filter(cruise => cruise.endDate && cruise.endDate < today)
+        .sort((a, b) => b.endDate.localeCompare(a.endDate));
+
+    [
+        ['future-cruises-list', future],
+        ['past-cruises-list', past]
+    ].forEach(([listId, entries]) => {
+        const list = document.getElementById(listId);
+        list.replaceChildren();
+        if (!entries.length) {
+            const empty = document.createElement('p');
+            empty.className = 'empty-cruises-message';
+            empty.textContent = listId === 'future-cruises-list'
+                ? 'No future cruises yet.'
+                : 'No past cruises yet.';
+            list.appendChild(empty);
+        }
+        entries.forEach(cruise => {
+            const card = document.createElement('article');
+            card.className = 'cruise-entry';
+            const details = document.createElement('div');
+            details.className = 'cruise-entry-details';
+            [
+                ['Date', cruiseDateLabel(cruise)],
+                ['Duration', `${cruise.duration} nights`],
+                ['Cruise ship', cruise.ship || 'Not selected'],
+                ['Destinations', cruise.destinations || 'Not set']
+            ].forEach(([label, value]) => {
+                const line = document.createElement('p');
+                const heading = document.createElement('strong');
+                heading.textContent = `${label}: `;
+                line.append(heading, document.createTextNode(value));
+                details.appendChild(line);
+            });
+            const viewButton = document.createElement('button');
+            viewButton.type = 'button';
+            viewButton.className = 'cruise-view-button';
+            viewButton.dataset.action = 'view-cruise';
+            viewButton.dataset.cruiseId = cruise.id;
+            viewButton.textContent = 'View';
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'cruise-delete-button';
+            deleteButton.dataset.action = 'delete-cruise';
+            deleteButton.dataset.cruiseId = cruise.id;
+            deleteButton.textContent = 'Delete Cruise';
+            card.append(details, viewButton, deleteButton);
+            list.appendChild(card);
+        });
+    });
+}
+
+function addCruise() {
+    saveActiveCruise();
+    const cruises = getCruises();
+    const cruise = makeCruise();
+    cruises.push(cruise);
+    saveCruises(cruises);
+    loadCruise(cruise);
+    goScrn('itinerary-screen');
+}
+
+function openCruise(id) {
+    saveActiveCruise();
+    const cruise = getCruises().find(entry => entry.id === id);
+    if (!cruise) {
+        alert('That cruise could not be found.');
+        return;
+    }
+    loadCruise(cruise);
+    goScrn('itinerary-screen');
+}
+
+function deleteCruise(id) {
+    const cruises = getCruises();
+    const cruise = cruises.find(entry => entry.id === id);
+    if (!cruise) {
+        alert('That cruise could not be found.');
+        return;
+    }
+    if (!confirm(`Delete the cruise ${cruiseDateLabel(cruise)}${cruise.ship ? ` on ${cruise.ship}` : ''}? This cannot be undone.`)) {
+        return;
+    }
+
+    saveActiveCruise();
+    saveCruises(getCruises().filter(entry => entry.id !== id));
+    if (activeCruiseId === id) {
+        activeCruiseId = null;
+        localStorage.removeItem('c_activeCruiseId');
+        [
+            'c_p', 'c_c', 'c_outfitCases', 'c_cruiseDate', 'c_cruiseStartDate',
+            'c_cruiseEndDate', 'c_destinations', 'c_ship'
+        ].forEach(key => localStorage.removeItem(key));
+    }
+    buildCruises();
+}
+
+function backToCruises() {
+    saveActiveCruise();
+    goScrn('cruises-screen');
 }
 
 function addItem() {
@@ -182,6 +474,7 @@ function labelsForFilter(category) {
 
 function setDur() {
     localStorage.setItem('c_d', document.getElementById('dur-select').value);
+    saveActiveCruise();
     buildItin();
 }
 
@@ -189,6 +482,7 @@ function setDC(day, value) {
     const codes = readData('c_c', {});
     codes[day] = value;
     localStorage.setItem('c_c', JSON.stringify(codes));
+    saveActiveCruise();
 }
 
 function reorderNights(fromDay, toDay, restoreFocus = false) {
@@ -208,6 +502,7 @@ function reorderNights(fromDay, toDay, restoreFocus = false) {
     ['c_p', 'c_c', 'c_outfitCases'].forEach(key => {
         localStorage.setItem(key, JSON.stringify(rekeyDays(readData(key, {}))));
     });
+    saveActiveCruise();
     buildItin();
     if (restoreFocus) {
         document.querySelector(`.night-drag-handle[data-day="${toDay}"]`)?.focus();
@@ -224,6 +519,9 @@ function buildItin() {
     const wardrobe = readData('c_w', []);
     const labels = readData('c_l', defL);
     const cards = document.getElementById('dynamic-itinerary-cards');
+    const copyTargets = getCruises()
+        .filter(cruise => cruise.id !== activeCruiseId && (!cruise.endDate || cruise.endDate >= todayISO()))
+        .sort((a, b) => (a.startDate || '9999-12-31').localeCompare(b.startDate || '9999-12-31'));
     cards.replaceChildren();
 
     for (let day = 1; day <= duration; day++) {
@@ -246,6 +544,28 @@ function buildItin() {
         dragHandle.title = 'Drag to reorder, or use the up and down arrow keys';
         dragHandle.textContent = '↕';
         titleGroup.append(title, dragHandle);
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'copy-outfit-button';
+        copyButton.dataset.action = 'toggle-copy-menu';
+        copyButton.dataset.day = String(day);
+        copyButton.textContent = 'Copy Outfit';
+        copyButton.disabled = copyTargets.length === 0;
+        const copySelect = document.createElement('select');
+        copySelect.className = 'copy-cruise-select';
+        copySelect.dataset.day = String(day);
+        copySelect.setAttribute('aria-label', `Copy Night ${day} outfits to a future cruise`);
+        copySelect.hidden = true;
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select future cruise';
+        copySelect.appendChild(placeholder);
+        copyTargets.forEach(cruise => {
+            const option = document.createElement('option');
+            option.value = cruise.id;
+            option.textContent = `${cruiseDateLabel(cruise)}${cruise.ship ? ` — ${cruise.ship}` : ''}`;
+            copySelect.appendChild(option);
+        });
         const dressCode = document.createElement('select');
         dressCode.dataset.day = String(day);
         ['Formal', 'Gala'].forEach(code => {
@@ -255,13 +575,14 @@ function buildItin() {
             option.selected = (codes[day] || 'Formal') === code;
             dressCode.appendChild(option);
         });
-        header.append(titleGroup, dressCode);
+        header.append(titleGroup, copyButton, copySelect, dressCode);
         card.appendChild(header);
 
         const rows = document.createElement('div');
         rows.className = 'planner-rows';
         rows.appendChild(createPlannerRow(day, 'her', [
-            ['dresses', 'Dress'], ['jackets-her', 'Jacket'], ['shoes-her', 'Shoes'], ['handbags', 'Bag']
+            ['dresses', 'Dress'], ['jackets-her', 'Jacket'], ['shoes-her', 'Shoes'], ['handbags', 'Bag'],
+            ['walking-stick', 'Walking Stick']
         ], plans, outfitCases, wardrobe, labels));
         rows.appendChild(createPlannerRow(day, 'him', [
             ['jackets-him', 'Jacket'], ['waistcoats', 'Waistcoat'], ['shirts', 'Shirt'],
@@ -270,6 +591,66 @@ function buildItin() {
         card.appendChild(rows);
         cards.appendChild(card);
     }
+}
+
+function toggleCopyMenu(button) {
+    const select = button.parentElement.querySelector('.copy-cruise-select');
+    if (!select || button.disabled) return;
+    document.querySelectorAll('.copy-cruise-select').forEach(menu => {
+        if (menu !== select) menu.hidden = true;
+    });
+    select.hidden = !select.hidden;
+    if (!select.hidden) select.focus();
+}
+
+function copyOutfitToCruise(day, targetId) {
+    const cruises = getCruises();
+    const targetIndex = cruises.findIndex(cruise => cruise.id === targetId);
+    const target = cruises[targetIndex];
+    if (!target || target.id === activeCruiseId || (target.endDate && target.endDate < todayISO())) {
+        alert('Select a future cruise.');
+        return;
+    }
+
+    const plans = readData('c_p', {});
+    const categoriesByOwner = {
+        her: ['dresses', 'jackets-her', 'shoes-her', 'handbags', 'walking-stick'],
+        him: ['jackets-him', 'waistcoats', 'shirts', 'trousers', 'shoes-him']
+    };
+    const selected = [];
+    Object.entries(categoriesByOwner).forEach(([owner, categories]) => {
+        categories.forEach(category => {
+            const key = `${day}_${owner}_${category}`;
+            if (plans[key]) selected.push([owner, category, plans[key]]);
+        });
+    });
+    if (!selected.length) {
+        alert('There are no selected outfits to copy for this night.');
+        return;
+    }
+
+    const targetPlans = { ...target.plans };
+    let freeDay = 0;
+    for (let candidate = 1; candidate <= Number(target.duration); candidate++) {
+        const occupied = Object.entries(categoriesByOwner)
+            .some(([owner, categories]) => categories.some(category => targetPlans[`${candidate}_${owner}_${category}`]));
+        if (!occupied) {
+            freeDay = candidate;
+            break;
+        }
+    }
+    if (!freeDay) {
+        alert('The selected cruise has no free nights for these outfits.');
+        return;
+    }
+
+    selected.forEach(([owner, category, itemId]) => {
+        targetPlans[`${freeDay}_${owner}_${category}`] = itemId;
+    });
+    cruises[targetIndex] = { ...cruises[targetIndex], plans: targetPlans };
+    saveCruises(cruises);
+    alert(`Outfits copied to ${cruiseDateLabel(target)} — Night ${freeDay}.`);
+    buildItin();
 }
 
 function createPlannerRow(day, owner, slots, plans, outfitCases, wardrobe, labels) {
@@ -291,8 +672,7 @@ function createPlannerRow(day, owner, slots, plans, outfitCases, wardrobe, label
     const suitcaseNames = getSuitcaseNames();
     [
         ['', 'Choose suitcase'],
-        ['a', suitcaseNames.a],
-        ['b', suitcaseNames.b]
+        ...suitcaseNames.map(({ id, name }) => [id, name])
     ].forEach(([value, name]) => {
         const option = document.createElement('option');
         option.value = value;
@@ -310,6 +690,7 @@ function setOutfitCase(day, owner, suitcase) {
     if (suitcase) outfitCases[key] = suitcase;
     else delete outfitCases[key];
     localStorage.setItem('c_outfitCases', JSON.stringify(outfitCases));
+    saveActiveCruise();
 }
 
 function printPackingList() {
@@ -318,10 +699,14 @@ function printPackingList() {
     const outfitCases = readData('c_outfitCases', {});
     const wardrobe = readData('c_w', []);
     const suitcaseNames = getSuitcaseNames();
-    const outfitsByCase = { a: {}, b: {}, unassigned: {} };
+    const outfitsByCase = Object.fromEntries([
+        ...suitcaseNames.map(({ id }) => [id, {}]),
+        ['unassigned', {}]
+    ]);
     const categoriesByOwner = {
         her: [
-            ['dresses', 'Dress'], ['jackets-her', 'Jkt'], ['shoes-her', 'Shoes'], ['handbags', 'Bag']
+            ['dresses', 'Dress'], ['jackets-her', 'Jkt'], ['shoes-her', 'Shoes'], ['handbags', 'Bag'],
+            ['walking-stick', 'Walking Stick']
         ],
         him: [
             ['jackets-him', 'Jkt'], ['waistcoats', 'Wc'], ['shirts', 'Shirt'],
@@ -340,7 +725,9 @@ function printPackingList() {
             if (!outfit.length) continue;
 
             const suitcase = outfitCases[`${day}_${owner}`];
-            const group = outfitsByCase[suitcase === 'a' || suitcase === 'b' ? suitcase : 'unassigned'];
+            const group = outfitsByCase[suitcaseNames.some(({ id }) => id === suitcase)
+                ? suitcase
+                : 'unassigned'];
             group[day] ||= { her: [], him: [] };
             group[day][owner] = outfit;
         }
@@ -365,8 +752,7 @@ function printPackingList() {
     report.append(title, subtitle);
 
     [
-        ['a', suitcaseNames.a],
-        ['b', suitcaseNames.b],
+        ...suitcaseNames.map(({ id, name }) => [id, name]),
         ['unassigned', 'Not assigned to a suitcase']
     ].forEach(([key, name]) => {
         const nights = outfitsByCase[key];
@@ -511,6 +897,7 @@ function setSlot(id) {
     if (id === null) delete plans[key];
     else plans[key] = id;
     localStorage.setItem('c_p', JSON.stringify(plans));
+    saveActiveCruise();
     closePick();
     buildItin();
 }
@@ -623,34 +1010,85 @@ function confL() {
     });
 }
 
+function normalizeSuitcaseNames(stored) {
+    const entries = Array.isArray(stored)
+        ? stored
+        : stored && typeof stored === 'object'
+            ? Object.entries(stored).map(([id, name]) => ({ id, name }))
+            : [];
+    const names = new Map(defaultSuitcaseNames.map(suitcase => [suitcase.id, suitcase.name]));
+    entries.forEach(suitcase => {
+        if (suitcase && typeof suitcase.id === 'string' && suitcase.id.trim()
+            && suitcase.id !== 'unassigned'
+            && /^[a-z\d_-]+$/i.test(suitcase.id)
+            && typeof suitcase.name === 'string' && suitcase.name.trim()
+            && suitcase.id.length <= 80 && suitcase.name.trim().length <= 40) {
+            names.set(suitcase.id, suitcase.name.trim());
+        }
+    });
+    return [...names].map(([id, name]) => ({ id, name }));
+}
+
 function getSuitcaseNames() {
-    const names = readData('c_bagNames', defaultSuitcaseNames);
-    return {
-        a: typeof names.a === 'string' && names.a.trim() ? names.a.trim() : defaultSuitcaseNames.a,
-        b: typeof names.b === 'string' && names.b.trim() ? names.b.trim() : defaultSuitcaseNames.b
-    };
+    return normalizeSuitcaseNames(readData('c_bagNames', null));
 }
 
 function saveSuitcaseNames() {
-    const aInput = document.getElementById('suitcase-a-name-input');
-    const bInput = document.getElementById('suitcase-b-name-input');
-    const a = aInput.value.trim();
-    const b = bInput.value.trim();
-    if (!a || !b) {
-        alert('Enter a name for both suitcases.');
-        (!a ? aInput : bInput).focus();
+    const inputs = Array.from(document.querySelectorAll('[data-suitcase-name]'));
+    const names = inputs.map(input => ({
+        id: input.dataset.suitcaseId,
+        name: input.value.trim()
+    }));
+    const emptyInput = inputs.find(input => !input.value.trim());
+    if (emptyInput) {
+        alert('Enter a name for each suitcase.');
+        emptyInput.focus();
         return;
     }
 
-    const names = { a, b };
+    localStorage.setItem('c_bagNames', JSON.stringify(names));
+    applySuitcaseNamesToUI(names);
+    if (document.getElementById('itinerary-screen').classList.contains('active')) buildItin();
+}
+
+function addSuitcase() {
+    const name = prompt('Enter a name for the new suitcase:')?.trim();
+    if (name === undefined) return;
+    if (!name || name.length > 40) {
+        alert('Enter a suitcase name of 1 to 40 characters.');
+        return;
+    }
+
+    const names = getSuitcaseNames();
+    let id;
+    do {
+        id = `case_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    } while (names.some(suitcase => suitcase.id === id));
+    names.push({ id, name });
     localStorage.setItem('c_bagNames', JSON.stringify(names));
     applySuitcaseNamesToUI(names);
     if (document.getElementById('itinerary-screen').classList.contains('active')) buildItin();
 }
 
 function applySuitcaseNamesToUI(names = getSuitcaseNames()) {
-    document.getElementById('suitcase-a-name-input').value = names.a;
-    document.getElementById('suitcase-b-name-input').value = names.b;
+    const list = document.getElementById('suitcase-names-list');
+    list.replaceChildren();
+    names.forEach((suitcase, index) => {
+        const row = document.createElement('div');
+        row.className = 'suitcase-name-row';
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `suitcase-name-input-${index}`;
+        input.maxLength = 40;
+        input.value = suitcase.name;
+        input.dataset.suitcaseId = suitcase.id;
+        input.dataset.suitcaseName = '';
+        label.htmlFor = input.id;
+        label.textContent = `Suitcase ${index + 1}`;
+        row.append(label, input);
+        list.appendChild(row);
+    });
 }
 
 function getCruiseShips() {
@@ -711,19 +1149,41 @@ function addCruiseShip() {
 }
 
 function saveCruiseDetails() {
-    localStorage.setItem('c_cruiseDate', document.getElementById('cruise-date-input').value.trim());
+    const startDate = document.getElementById('cruise-start-date-input').value;
+    const endDate = document.getElementById('cruise-end-date-input').value;
+    if ((startDate && !validISODate(startDate)) || (endDate && !validISODate(endDate))) {
+        alert('Enter valid cruise dates.');
+        return false;
+    }
+    if (startDate && endDate && endDate < startDate) {
+        alert('The return date must be on or after the departure date.');
+        document.getElementById('cruise-end-date-input').focus();
+        return false;
+    }
+    localStorage.setItem('c_cruiseStartDate', startDate);
+    localStorage.setItem('c_cruiseEndDate', endDate);
+    const cruise = getCruises().find(entry => entry.id === activeCruiseId);
+    localStorage.setItem('c_cruiseDate', cruiseDateLabel({
+        startDate,
+        endDate,
+        legacyDate: startDate || endDate ? '' : cruise?.legacyDate || ''
+    }));
     localStorage.setItem('c_destinations', document.getElementById('cruise-destinations-input').value.trim());
     localStorage.setItem('c_ship', document.getElementById('cruise-ship-select').value);
+    saveActiveCruise();
+    return true;
 }
 
 function applyCruiseDetailsToUI() {
-    document.getElementById('cruise-date-input').value = localStorage.getItem('c_cruiseDate') || '';
+    document.getElementById('cruise-start-date-input').value = localStorage.getItem('c_cruiseStartDate') || '';
+    document.getElementById('cruise-end-date-input').value = localStorage.getItem('c_cruiseEndDate') || '';
     document.getElementById('cruise-destinations-input').value = localStorage.getItem('c_destinations') || '';
     renderCruiseShipOptions();
     renderCruiseShipList();
 }
 
 function expData() {
+    saveActiveCruise();
     const packageData = {
         w: readData('c_w', []),
         l: readData('c_l', defL),
@@ -735,7 +1195,9 @@ function expData() {
         cruiseDate: localStorage.getItem('c_cruiseDate') || '',
         destinations: localStorage.getItem('c_destinations') || '',
         ship: localStorage.getItem('c_ship') || '',
-        ships: getCruiseShips()
+        ships: getCruiseShips(),
+        cruises: getCruises(),
+        activeCruiseId
     };
     const file = new Blob([JSON.stringify(packageData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(file);
@@ -746,6 +1208,39 @@ function expData() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+}
+
+function validateCruiseRecord(cruise, ships, suitcaseIds) {
+    const validObject = value => value && typeof value === 'object' && !Array.isArray(value);
+    if (!validObject(cruise) || typeof cruise.id !== 'string' || !cruise.id
+        || typeof cruise.startDate !== 'string' || (cruise.startDate && !validISODate(cruise.startDate))
+        || typeof cruise.endDate !== 'string' || (cruise.endDate && !validISODate(cruise.endDate))
+        || (cruise.startDate && cruise.endDate && cruise.endDate < cruise.startDate)
+        || typeof cruise.legacyDate !== 'string' || cruise.legacyDate.length > 120
+        || typeof cruise.ship !== 'string' || cruise.ship.length > 80
+        || typeof cruise.destinations !== 'string' || cruise.destinations.length > 300
+        || !validObject(cruise.plans) || !validObject(cruise.codes) || !validObject(cruise.outfitCases)
+        || Object.entries(cruise.plans).some(([key, value]) =>
+            !/^\d+_(her|him)_[a-z-]+$/.test(key) || typeof value !== 'string')
+        || Object.entries(cruise.codes).some(([key, value]) => !/^\d+$/.test(key) || typeof value !== 'string')
+        || Object.entries(cruise.outfitCases).some(([key, value]) =>
+            !/^\d+_(her|him)$/.test(key) || !suitcaseIds.includes(value))) {
+        throw new Error('The backup contains invalid cruise data.');
+    }
+
+    const storedDuration = String(cruise.duration);
+    if (![...cruiseDurations, ...Object.keys(legacyCruiseDurations)].includes(storedDuration)) {
+        throw new Error('The backup contains an unsupported cruise duration.');
+    }
+    if (cruise.ship && !ships.includes(cruise.ship)) {
+        throw new Error('A cruise selects a ship that is not in its ship list.');
+    }
+    return makeCruise({
+        ...cruise,
+        duration: cruiseDurations.includes(storedDuration)
+            ? storedDuration
+            : legacyCruiseDurations[storedDuration]
+    });
 }
 
 function validateBackup(data) {
@@ -767,17 +1262,26 @@ function validateBackup(data) {
     if (data.c !== undefined && (!data.c || typeof data.c !== 'object' || Array.isArray(data.c))) {
         throw new Error('The backup contains invalid night settings.');
     }
-    if (data.suitcaseNames !== undefined && (
-        !data.suitcaseNames || typeof data.suitcaseNames !== 'object' || Array.isArray(data.suitcaseNames)
-        || ['a', 'b'].some(key => data.suitcaseNames[key] !== undefined
-            && (typeof data.suitcaseNames[key] !== 'string' || data.suitcaseNames[key].length > 40))
-    )) {
-        throw new Error('The backup contains invalid suitcase names.');
-    }
+    const rawSuitcaseNames = data.suitcaseNames;
+    const invalidSuitcaseNames = rawSuitcaseNames !== undefined && (
+        Array.isArray(rawSuitcaseNames)
+            ? rawSuitcaseNames.some(suitcase => !suitcase
+                || typeof suitcase.id !== 'string' || !suitcase.id.trim()
+                || suitcase.id === 'unassigned'
+                || !/^[a-z\d_-]+$/i.test(suitcase.id) || suitcase.id.length > 80
+                || typeof suitcase.name !== 'string' || !suitcase.name.trim() || suitcase.name.length > 40)
+                || new Set(rawSuitcaseNames.map(suitcase => suitcase.id)).size !== rawSuitcaseNames.length
+            : !rawSuitcaseNames || typeof rawSuitcaseNames !== 'object'
+                || Object.values(rawSuitcaseNames).some(name =>
+                    typeof name !== 'string' || !name.trim() || name.length > 40)
+    );
+    if (invalidSuitcaseNames) throw new Error('The backup contains invalid suitcase names.');
+    const suitcaseNames = normalizeSuitcaseNames(rawSuitcaseNames);
+    const suitcaseIds = suitcaseNames.map(suitcase => suitcase.id);
     if (data.outfitCases !== undefined && (
         !data.outfitCases || typeof data.outfitCases !== 'object' || Array.isArray(data.outfitCases)
         || Object.entries(data.outfitCases).some(([key, value]) =>
-            !/^\d+_(her|him)$/.test(key) || !['a', 'b'].includes(value))
+            !/^\d+_(her|him)$/.test(key) || !suitcaseIds.includes(value))
     )) {
         throw new Error('The backup contains invalid outfit suitcase assignments.');
     }
@@ -806,10 +1310,30 @@ function validateBackup(data) {
     const duration = cruiseDurations.includes(storedDuration)
         ? storedDuration
         : legacyCruiseDurations[storedDuration];
-    const suitcaseNames = {
-        a: data.suitcaseNames?.a?.trim() || defaultSuitcaseNames.a,
-        b: data.suitcaseNames?.b?.trim() || defaultSuitcaseNames.b
-    };
+    const cruises = data.cruises === undefined
+        ? [makeCruise({
+            ...parseLegacyCruiseDates(data.cruiseDate || ''),
+            duration,
+            ship: selectedShip,
+            destinations: data.destinations || '',
+            plans: data.p || {},
+            codes: data.c || {},
+            outfitCases: data.outfitCases || {}
+        })]
+        : (() => {
+            if (!Array.isArray(data.cruises)) {
+                throw new Error('The backup contains an invalid cruise list.');
+            }
+            const validated = data.cruises.map(cruise => validateCruiseRecord(cruise, ships, suitcaseIds));
+            if (new Set(validated.map(cruise => cruise.id)).size !== validated.length) {
+                throw new Error('The backup contains duplicate cruise IDs.');
+            }
+            return validated;
+        })();
+    const selectedCruiseId = typeof data.activeCruiseId === 'string'
+        && cruises.some(cruise => cruise.id === data.activeCruiseId)
+        ? data.activeCruiseId
+        : cruises[0]?.id || '';
     return {
         ...data,
         d: duration,
@@ -820,7 +1344,9 @@ function validateBackup(data) {
         cruiseDate: data.cruiseDate || '',
         destinations: data.destinations || '',
         ship: selectedShip,
-        ships
+        ships,
+        cruises,
+        activeCruiseId: selectedCruiseId
     };
 }
 
@@ -841,6 +1367,15 @@ async function impData(fileInput) {
         localStorage.setItem('c_destinations', imported.destinations);
         localStorage.setItem('c_ship', imported.ship);
         localStorage.setItem('c_ships', JSON.stringify(imported.ships));
+        saveCruises(imported.cruises);
+        activeCruiseId = imported.activeCruiseId || null;
+        if (activeCruiseId) {
+            loadCruise(imported.cruises.find(cruise => cruise.id === activeCruiseId));
+        } else {
+            localStorage.removeItem('c_activeCruiseId');
+            localStorage.setItem('c_cruiseStartDate', '');
+            localStorage.setItem('c_cruiseEndDate', '');
+        }
         filt = {};
         confL();
         applySuitcaseNamesToUI(imported.suitcaseNames);
@@ -848,6 +1383,7 @@ async function impData(fileInput) {
         renderCruiseShipList();
         loadWard();
         if (document.getElementById('itinerary-screen').classList.contains('active')) buildItin();
+        if (document.getElementById('cruises-screen').classList.contains('active')) buildCruises();
         alert('Imported!');
     } catch (error) {
         alert(`Unable to import backup: ${error.message}`);
@@ -867,8 +1403,14 @@ document.addEventListener('click', event => {
 
     if (button.dataset.screen) goScrn(button.dataset.screen, button);
     else if (button.classList.contains('tab-btn')) goWard(button.dataset.owner);
+    else if (button.dataset.action === 'add-cruise') addCruise();
+    else if (button.dataset.action === 'view-cruise') openCruise(button.dataset.cruiseId);
+    else if (button.dataset.action === 'delete-cruise') deleteCruise(button.dataset.cruiseId);
+    else if (button.dataset.action === 'back-to-cruises') backToCruises();
+    else if (button.dataset.action === 'toggle-copy-menu') toggleCopyMenu(button);
     else if (button.dataset.action === 'add-item') addItem();
     else if (button.dataset.action === 'save-suitcase-names') saveSuitcaseNames();
+    else if (button.dataset.action === 'add-suitcase') addSuitcase();
     else if (button.dataset.action === 'add-cruise-ship') addCruiseShip();
     else if (button.dataset.action === 'print-packing-list') printPackingList();
     else if (button.dataset.action === 'open-picker') {
@@ -884,6 +1426,10 @@ document.addEventListener('click', event => {
 document.addEventListener('change', event => {
     if (event.target.id === 'dur-select') setDur();
     else if (event.target.id === 'cruise-ship-select') saveCruiseDetails();
+    else if (['cruise-start-date-input', 'cruise-end-date-input'].includes(event.target.id)) saveCruiseDetails();
+    else if (event.target.matches('.copy-cruise-select') && event.target.value) {
+        copyOutfitToCruise(Number(event.target.dataset.day), event.target.value);
+    }
     else if (event.target.id === 'import-file-picker') impData(event.target);
     else if (event.target.matches('[data-category-filter-checkbox]')) {
         setFilt(
@@ -944,7 +1490,7 @@ document.addEventListener('dragend', () => {
 });
 
 document.addEventListener('input', event => {
-    if (['cruise-date-input', 'cruise-destinations-input'].includes(event.target.id)) {
+    if (event.target.id === 'cruise-destinations-input') {
         saveCruiseDetails();
     }
 });
@@ -963,8 +1509,8 @@ document.addEventListener('keydown', event => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+    initializeCruises();
     confL();
     applySuitcaseNamesToUI();
-    applyCruiseDetailsToUI();
     loadWard();
 });
