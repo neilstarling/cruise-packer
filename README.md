@@ -1,6 +1,10 @@
 # Cruise Packing App
 
-A browser-based app for organizing clothing, planning outfits across multiple cruises, and preparing suitcase-by-suitcase packing lists. Open `index.html` in a modern browser to use it; no build step or server is required.
+A browser-based app for organizing clothing, planning outfits across multiple cruises, and preparing suitcase-by-suitcase packing lists. Open `index.html` in a modern browser for basic use; no build step is required.
+
+## Progressive Web App
+
+The app includes a web app manifest, 192px and 512px icons, and a service worker that caches the app shell for offline loading. Serve it from `localhost` or an HTTPS host to enable browser installation and offline support; opening `index.html` directly does not register the service worker. Visit the app once while online to cache its files. App data remains in browser local storage on the current device.
 
 ## Main tabs
 

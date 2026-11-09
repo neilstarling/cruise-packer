@@ -1,0 +1,22 @@
+{
+  "name": "Cruise Packing App",
+  "short_name": "Cruise Packer",
+  "description": "Organize your wardrobe and plan outfits and packing lists for cruises.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b7a87",
+  "theme_color": "#0b7a87",
+  "icons": [
+    {
+      "src": "icons/cruisepacker192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/cruisepacker512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
