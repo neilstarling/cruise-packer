@@ -1,9 +1,10 @@
-const CACHE_NAME = 'cruise-packer-shell-v1';
+const CACHE_NAME = 'cruise-packer-shell-v2';
 const APP_SHELL_FILES = [
     './',
     './index.html',
     './style.css',
     './app.js',
+    './firebase-config.js',
     './manifest.webmanifest',
     './icons/cruisepacker192.png',
     './icons/cruisepacker512.png'

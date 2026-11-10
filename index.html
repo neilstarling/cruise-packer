@@ -175,9 +175,27 @@
             <h3>Active Labels</h3><div id="labels-grid" class="labels-grid"></div>
             <h3 style="margin-top:40px;border-top:1px solid #e2e8f0;padding-top:20px">💾 Backup Data</h3>
             <div style="display:flex;gap:15px"><button data-action="export-data" style="background:#4b5563;color:#fff">📤 Export File</button><label style="background:#0284c7;color:#fff;padding:10px;border-radius:6px;cursor:pointer">📥 Import File<input type="file" id="import-file-picker" accept=".json" style="display:none"></label></div>
+
+            <h2>☁️ Sync between devices</h2>
+            <p>Your data stays on this device until you sign in. Signed-in data is stored in your private Firebase account and can be accessed on your other devices.</p>
+            <p id="sync-status" class="sync-status" role="status" aria-live="polite">Checking Firebase connection…</p>
+            <form id="sync-auth-form" class="sync-auth-form">
+                <label for="sync-email">Email address<input type="email" id="sync-email" autocomplete="email" required></label>
+                <label for="sync-password">Password<input type="password" id="sync-password" autocomplete="current-password" minlength="6" required></label>
+                <div class="sync-actions">
+                    <button type="submit" data-action="sign-in">Sign in</button>
+                    <button type="submit" data-action="create-account">Create account</button>
+                    <button type="button" data-action="reset-password">Reset password</button>
+                </div>
+            </form>
+            <div id="sync-account" class="sync-account" hidden>
+                <p>Signed in as <strong id="sync-account-email"></strong></p>
+                <button type="button" data-action="sign-out">Sign out</button>
+            </div>
         </div>
     </main>
 
-    <script src="app.js"></script>
+    <script defer src="firebase-config.js"></script>
+    <script defer src="app.js"></script>
 </body>
 </html>

@@ -95,6 +95,14 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .suitcase-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .suitcase-actions button[data-action="add-suitcase"] { background: #10b981; color: #fff; }
 .suitcase-actions button[data-action="save-suitcase-names"] { background: #3b82f6; color: #fff; }
+.sync-auth-form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 15px 0; }
+.sync-auth-form label { display: flex; flex: 1 1 220px; flex-direction: column; gap: 5px; font-weight: bold; }
+.sync-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sync-actions button, .sync-account button { background: #1a365d; color: #fff; }
+.sync-status { min-height: 1.5em; color: #334155; }
+.sync-status[data-state="error"] { color: #b91c1c; }
+.sync-status[data-state="success"] { color: #047857; }
+.sync-account[hidden], .sync-auth-form[hidden] { display: none; }
 .cruise-ship-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .cruise-ship-form label { flex: 0 0 100%; font-weight: bold; }
 .cruise-ship-form input { flex: 1 1 240px; min-width: 0; }

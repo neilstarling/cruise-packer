@@ -56,4 +56,18 @@ The **Help** tab provides an in-app guide to wardrobes, cruises, outfit planning
 
 ## Data storage
 
-The app stores data in browser local storage on the current device. It does not automatically sync between browsers or devices. Clearing the browser's site data may remove saved plans, so export backups regularly.
+The app stores data in browser local storage on the current device. After you opt in by signing in to Firebase, it also syncs that data between devices. Clearing the browser's site data may remove its local copy, so export backups regularly.
+
+## Firebase sync setup
+
+The app can sync its local data between devices through Firebase Authentication and Cloud Firestore. Sign-in is optional; without it, the app continues to use local storage and JSON backups.
+
+Before using sync:
+
+1. In the Firebase console for project `cruise-packer-17b82`, enable **Authentication > Sign-in method > Email/Password**.
+2. Create a **Cloud Firestore** database on the Spark plan.
+3. Publish the rules from [`firestore.rules`](./firestore.rules) in **Firestore Database > Rules**. They restrict each signed-in user to their own document.
+4. Serve the app from an HTTPS host (or `localhost`) and open it online. Add the deployed hostname to **Authentication > Settings > Authorized domains** if Firebase rejects it. Firebase's browser SDK is loaded from Google's CDN; offline app features continue to use local storage.
+5. In **Settings > Sync between devices**, create an account on the device with the data you want to keep. If that account has no cloud data yet, the app uploads the current browser's app data. Sign in with the same account on other devices to load and sync it.
+
+The app keeps local copies on each device. While online, changes sync automatically; when both devices make changes before reconnecting, whichever whole-app save reaches Firestore last wins and can replace the other device's unsynced changes. Export JSON backups regularly. Firebase's web API key is included in client code by design; access control comes from Authentication and the Firestore rules, not from keeping that key secret.

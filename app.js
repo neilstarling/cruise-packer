@@ -2,6 +2,24 @@ let sex = 'her';
 let filt = {};
 let actSlot = null;
 let activeCruiseId = null;
+const cloudDataKeys = [
+    'c_w', 'c_l', 'c_p', 'c_c', 'c_d', 'c_bagNames', 'c_outfitCases',
+    'c_cruiseDate', 'c_cruiseStartDate', 'c_cruiseEndDate', 'c_destinations',
+    'c_ship', 'c_ships', 'c_cruises', 'c_activeCruiseId'
+];
+const cloudSync = {
+    auth: null,
+    db: null,
+    user: null,
+    unsubscribe: null,
+    timer: null,
+    ready: false,
+    suppressWrites: false,
+    dirty: false,
+    writeInFlight: false,
+    writePromise: null,
+    generation: 0
+};
 const defaultSuitcaseNames = [
     { id: 'a', name: 'Suitcase A' },
     { id: 'b', name: 'Suitcase B' }
@@ -29,6 +47,327 @@ const defaultCruiseShips = [
     'Cunard - Queen Anne',
     'Cunard - Queen Victoria'
 ];
+
+function setSyncStatus(message, state = '') {
+    const status = document.getElementById('sync-status');
+    status.textContent = message;
+    status.dataset.state = state;
+}
+
+function updateSyncAccountUI(user) {
+    const form = document.getElementById('sync-auth-form');
+    const account = document.getElementById('sync-account');
+    const email = document.getElementById('sync-account-email');
+    form.hidden = Boolean(user);
+    account.hidden = !user;
+    email.textContent = user?.email || '';
+}
+
+function syncDirtyKey(userId = cloudSync.user?.uid) {
+    return userId ? `cruise-packer-sync-dirty-${userId}` : '';
+}
+
+function clearSyncDirtyMarker() {
+    const key = syncDirtyKey();
+    if (key) localStorage.removeItem(key);
+}
+
+function readCloudData() {
+    return Object.fromEntries(cloudDataKeys
+        .map(key => [key, localStorage.getItem(key)])
+        .filter(([, value]) => value !== null));
+}
+
+function collectCloudData() {
+    saveActiveCruise();
+    return readCloudData();
+}
+
+function validateCloudData(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)
+        || Object.keys(data).some(key => !cloudDataKeys.includes(key))
+        || Object.values(data).some(value => typeof value !== 'string')) {
+        throw new Error('The saved cloud data has an unsupported format.');
+    }
+    if (new TextEncoder().encode(JSON.stringify(data)).length > 850000) {
+        throw new Error('The saved cloud data is too large to sync safely.');
+    }
+    return data;
+}
+
+function applyCloudData(data) {
+    validateCloudData(data);
+    cloudSync.suppressWrites = true;
+    try {
+        cloudDataKeys.forEach(key => {
+            if (Object.hasOwn(data, key)) localStorage.setItem(key, data[key]);
+            else localStorage.removeItem(key);
+        });
+    } finally {
+        cloudSync.suppressWrites = false;
+    }
+    clearSyncDirtyMarker();
+
+    initializeCruises();
+    confL();
+    applySuitcaseNamesToUI();
+    loadWard();
+    if (document.getElementById('itinerary-screen').classList.contains('active')) buildItin();
+    if (document.getElementById('cruises-screen').classList.contains('active')) buildCruises();
+}
+
+function scheduleCloudSync(delay = 700) {
+    if (!cloudSync.user || cloudSync.suppressWrites) return;
+    cloudSync.dirty = true;
+    localStorage.setItem(syncDirtyKey(), '1');
+    if (!cloudSync.ready) {
+        setSyncStatus('Changes are saved on this device and will sync when connected.');
+        return;
+    }
+    setSyncStatus('Changes saved on this device. Syncing…');
+    clearTimeout(cloudSync.timer);
+    cloudSync.timer = setTimeout(() => {
+        flushCloudSync();
+    }, delay);
+}
+
+async function flushCloudSync() {
+    if (!cloudSync.user || !cloudSync.ready) return false;
+    clearTimeout(cloudSync.timer);
+    if (cloudSync.writeInFlight) {
+        try {
+            await cloudSync.writePromise;
+            return cloudSync.dirty ? flushCloudSync() : true;
+        } catch {
+            return false;
+        }
+    }
+    if (!cloudSync.dirty) return true;
+
+    const userId = cloudSync.user.uid;
+    const generation = cloudSync.generation;
+    let appData;
+    try {
+        appData = validateCloudData(collectCloudData());
+    } catch (error) {
+        setSyncStatus(`Sync failed. Your data is still saved on this device. ${error.message}`, 'error');
+        return false;
+    }
+    cloudSync.dirty = false;
+    cloudSync.writeInFlight = true;
+    try {
+        cloudSync.writePromise = cloudSync.db.collection('users').doc(userId).set({
+            version: 1,
+            appData,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await cloudSync.writePromise;
+        if (generation === cloudSync.generation) {
+            if (!cloudSync.dirty) clearSyncDirtyMarker();
+            setSyncStatus('All changes synced.', 'success');
+        }
+        return true;
+    } catch (error) {
+        if (generation === cloudSync.generation) {
+            cloudSync.dirty = true;
+            setSyncStatus(`Sync failed. Your data is still saved on this device. ${error.message}`, 'error');
+        }
+        return false;
+    } finally {
+        cloudSync.writeInFlight = false;
+        cloudSync.writePromise = null;
+        if (cloudSync.dirty && navigator.onLine) scheduleCloudSync(0);
+    }
+}
+
+function watchCloudData(userId, generation) {
+    cloudSync.unsubscribe = cloudSync.db.collection('users').doc(userId).onSnapshot(snapshot => {
+        if (generation !== cloudSync.generation || !cloudSync.user) return;
+        if (!snapshot.exists) {
+            setSyncStatus('Cloud data was removed. Local data is unchanged.', 'error');
+            return;
+        }
+        if (snapshot.metadata.hasPendingWrites || cloudSync.dirty || cloudSync.writeInFlight) return;
+
+        try {
+            const document = snapshot.data();
+            if (document.version !== 1) throw new Error('The saved cloud data version is not supported.');
+            const data = validateCloudData(document.appData);
+            if (JSON.stringify(data) !== JSON.stringify(readCloudData())) applyCloudData(data);
+            setSyncStatus('All changes synced.', 'success');
+        } catch (error) {
+            setSyncStatus(`Unable to load cloud data. ${error.message}`, 'error');
+        }
+    }, error => {
+        if (generation === cloudSync.generation) {
+            setSyncStatus(`Cloud sync stopped. ${error.message}`, 'error');
+        }
+    });
+}
+
+async function connectCloudData(user, generation) {
+    const reference = cloudSync.db.collection('users').doc(user.uid);
+    setSyncStatus('Loading your cloud data…');
+    cloudSync.ready = false;
+
+    const snapshot = await reference.get();
+    if (generation !== cloudSync.generation) return;
+    if (snapshot.exists) {
+        const document = snapshot.data();
+        if (document.version !== 1) throw new Error('The saved cloud data version is not supported.');
+        if (cloudSync.dirty) {
+            cloudSync.ready = true;
+            setSyncStatus('Uploading changes saved on this device…');
+            watchCloudData(user.uid, generation);
+            scheduleCloudSync(0);
+            return;
+        }
+        applyCloudData(validateCloudData(document.appData));
+        cloudSync.ready = true;
+        setSyncStatus('Cloud data loaded.', 'success');
+    } else {
+        await reference.set({
+            version: 1,
+            appData: validateCloudData(collectCloudData()),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        if (generation !== cloudSync.generation) return;
+        cloudSync.ready = true;
+        setSyncStatus('This device’s data was uploaded to your new account.', 'success');
+    }
+    watchCloudData(user.uid, generation);
+    if (cloudSync.dirty) scheduleCloudSync(0);
+}
+
+async function onFirebaseAuthStateChanged(user) {
+    cloudSync.generation += 1;
+    const generation = cloudSync.generation;
+    clearTimeout(cloudSync.timer);
+    cloudSync.unsubscribe?.();
+    cloudSync.unsubscribe = null;
+    cloudSync.user = user;
+    cloudSync.ready = false;
+    cloudSync.dirty = Boolean(user && localStorage.getItem(syncDirtyKey(user.uid)) === '1');
+    updateSyncAccountUI(user);
+
+    if (!user) {
+        setSyncStatus('Not signed in. App data remains on this device.');
+        return;
+    }
+    setSyncStatus(`Signed in as ${user.email || 'your account'}. Loading…`);
+    try {
+        await connectCloudData(user, generation);
+    } catch (error) {
+        if (generation === cloudSync.generation) {
+            setSyncStatus(`Could not load cloud data. Check Firebase setup and Firestore rules. ${error.message}`, 'error');
+        }
+    }
+}
+
+async function initializeFirebaseSync() {
+    try {
+        const sdkFiles = [
+            'firebase-app-compat.js',
+            'firebase-auth-compat.js',
+            'firebase-firestore-compat.js'
+        ];
+        for (const file of sdkFiles) {
+            if (window.firebase && (file === 'firebase-app-compat.js'
+                || (file === 'firebase-auth-compat.js' && firebase.auth)
+                || (file === 'firebase-firestore-compat.js' && firebase.firestore))) continue;
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = `https://www.gstatic.com/firebasejs/10.14.1/${file}`;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Firebase SDK could not be loaded. Check your internet connection.'));
+                document.head.appendChild(script);
+            });
+        }
+        if (!window.firebaseConfig) throw new Error('Firebase configuration is missing.');
+        firebase.initializeApp(window.firebaseConfig);
+        cloudSync.auth = firebase.auth();
+        cloudSync.db = firebase.firestore();
+        const originalSetItem = Storage.prototype.setItem;
+        const originalRemoveItem = Storage.prototype.removeItem;
+        Storage.prototype.setItem = function (key, value) {
+            const changed = this === localStorage && key.startsWith('c_')
+                && this.getItem(key) !== String(value);
+            originalSetItem.call(this, key, value);
+            if (changed) scheduleCloudSync();
+        };
+        Storage.prototype.removeItem = function (key) {
+            const changed = this === localStorage && key.startsWith('c_')
+                && this.getItem(key) !== null;
+            originalRemoveItem.call(this, key);
+            if (changed) scheduleCloudSync();
+        };
+        cloudSync.auth.onAuthStateChanged(user => {
+            onFirebaseAuthStateChanged(user).catch(error => {
+                setSyncStatus(`Unable to initialize account sync. ${error.message}`, 'error');
+            });
+        }, error => {
+            setSyncStatus(`Firebase sign-in failed. ${error.message}`, 'error');
+        });
+    } catch (error) {
+        setSyncStatus(`Firebase setup failed. ${error.message}`, 'error');
+    }
+}
+
+async function submitSyncAuth(action) {
+    if (!cloudSync.auth) {
+        setSyncStatus('Firebase is unavailable. The app still works with local storage and backups.', 'error');
+        return;
+    }
+    const email = document.getElementById('sync-email').value.trim();
+    const password = document.getElementById('sync-password').value;
+    const submitButtons = document.querySelectorAll('#sync-auth-form button[type="submit"]');
+    submitButtons.forEach(button => { button.disabled = true; });
+    try {
+        if (action === 'create-account') await cloudSync.auth.createUserWithEmailAndPassword(email, password);
+        else await cloudSync.auth.signInWithEmailAndPassword(email, password);
+        document.getElementById('sync-password').value = '';
+    } catch (error) {
+        setSyncStatus(`Sign-in failed. ${error.message}`, 'error');
+    } finally {
+        submitButtons.forEach(button => { button.disabled = false; });
+    }
+}
+
+async function resetSyncPassword() {
+    if (!cloudSync.auth) {
+        setSyncStatus('Firebase is unavailable. The app still works with local storage and backups.', 'error');
+        return;
+    }
+    const email = document.getElementById('sync-email').value.trim();
+    if (!email) {
+        setSyncStatus('Enter your email address first to request a password reset.', 'error');
+        document.getElementById('sync-email').focus();
+        return;
+    }
+    try {
+        await cloudSync.auth.sendPasswordResetEmail(email);
+        setSyncStatus('If an account exists for that email, a password reset message has been sent.', 'success');
+    } catch (error) {
+        setSyncStatus(`Could not send the password reset email. ${error.message}`, 'error');
+    }
+}
+
+async function signOutOfSync() {
+    if (cloudSync.writePromise) {
+        try {
+            await cloudSync.writePromise;
+        } catch {
+            setSyncStatus('Could not sign out because a sync failed. Your data remains on this device.', 'error');
+            return;
+        }
+    }
+    if (!await flushCloudSync()) return;
+    try {
+        await cloudSync.auth.signOut();
+    } catch (error) {
+        setSyncStatus(`Sign-out failed. ${error.message}`, 'error');
+    }
+}
 
 function readData(key, fallback) {
     return JSON.parse(localStorage.getItem(key)) || fallback;
@@ -1421,6 +1760,14 @@ document.addEventListener('click', event => {
     else if (button.dataset.action === 'delete-label') deleteLabel(button.dataset.labelId);
     else if (button.dataset.action === 'delete-item') deleteItem(button.dataset.itemId);
     else if (button.dataset.action === 'export-data') expData();
+    else if (button.dataset.action === 'reset-password') resetSyncPassword();
+    else if (button.dataset.action === 'sign-out') signOutOfSync();
+});
+
+document.addEventListener('submit', event => {
+    if (event.target.id !== 'sync-auth-form') return;
+    event.preventDefault();
+    submitSyncAuth(event.submitter?.dataset.action);
 });
 
 document.addEventListener('change', event => {
@@ -1513,6 +1860,15 @@ window.addEventListener('DOMContentLoaded', () => {
     confL();
     applySuitcaseNamesToUI();
     loadWard();
+    initializeFirebaseSync();
+});
+
+window.addEventListener('online', () => {
+    if (cloudSync.user && !cloudSync.ready) {
+        onFirebaseAuthStateChanged(cloudSync.user);
+    } else if (cloudSync.dirty) {
+        flushCloudSync();
+    }
 });
 
 if ('serviceWorker' in navigator) {
