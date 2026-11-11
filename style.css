@@ -169,7 +169,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, .tile:focus-vis
     .packing-list-table .packing-outfit-label { font-weight: 600; }
     .packing-list-table .packing-outfit-him th, .packing-list-table .packing-outfit-him td { border-top-style: dashed; }
     .packing-item-list { display: flex; flex-wrap: wrap; gap: 1px; }
-    .packing-item-box { display: inline-block; padding: 1px 3px; border: 1px solid #94a3b8; border-radius: 2px; font-size: 12pt; line-height: 1.1; overflow-wrap: anywhere; break-inside: avoid; }
+    .packing-item-box { display: inline-block; padding: 1px 3px; border: 1px solid #94a3b8; border-radius: 2px; font-size: 11pt; line-height: 1.1; overflow-wrap: anywhere; break-inside: avoid; }
     .packing-case-heading th { padding-top: 2px; padding-bottom: 2px; border-top: 2px solid #334155; border-bottom: 2px solid #334155; background: #e2e8f0; font-size: 7pt; }
     .packing-case-a .packing-case-heading th { background: #fee2e2; }
     .packing-case-b .packing-case-heading th { background: #dbeafe; }
