@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cruise-packer-shell-v2';
+const CACHE_NAME = 'cruise-packer-shell-v3';
 const APP_SHELL_FILES = [
     './',
     './index.html',
@@ -43,6 +43,13 @@ self.addEventListener('fetch', event => {
     }
 
     event.respondWith(
-        caches.match(request).then(cachedResponse => cachedResponse || fetch(request))
+        fetch(request).then(response => {
+            if (response.ok) {
+                event.waitUntil(
+                    caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()))
+                );
+            }
+            return response;
+        }).catch(() => caches.match(request))
     );
 });
