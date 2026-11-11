@@ -31,8 +31,8 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .tile-list { display: flex; flex-direction: column; gap: 10px; min-height: 150px; }
 
 /* THE DYNAMIC TILES */
-.tile { padding: 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); position: relative; overflow: hidden; padding-left: 20px; background: #fff; color: #000; }
-.tile::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 10px; background: var(--tags, #fff); }
+.tile { padding: 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); position: relative; overflow: hidden; padding-left: 30px; background: #fff; color: #000; }
+.tile::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 20px; background: var(--tags, #fff); }
 
 /* WARDROBE CONTROLS & CHECKBOXES */
 .add-item-form { max-width: 800px; margin: 0 auto 25px auto; background: #fff; padding: 15px; border-radius: 8px; display: flex; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); align-items: center; }
@@ -108,7 +108,8 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .cruise-ship-form input { flex: 1 1 240px; min-width: 0; }
 .cruise-ship-form button { background: #3b82f6; color: #fff; }
 .cruise-ship-list { margin: 0 0 30px; padding: 0; list-style: none; }
-.cruise-ship-list li { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+.cruise-ship-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+.cruise-ship-delete-button { flex: 0 0 auto; padding: 6px 10px; background: #dc2626; color: #fff; }
 .add-label-form { background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px; }
 .labels-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; }
 .label-config-card { background: #f1f5f9; padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 10px; align-items: center; border: 1px solid #cbd5e1; }
@@ -116,8 +117,8 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .tile-delete { position: absolute; right: 4px; top: 4px; padding: 2px 6px; background: rgba(15, 23, 42, 0.12); color: inherit; font-size: 1.1rem; line-height: 1; }
 .picker-tile { width: 100%; }
 .picker-tile { text-align: center; }
-.slot-tag { position: absolute; top: 0; left: 0; bottom: 0; width: 8px; background: var(--tags, #fff); }
-.slot.filled { padding-left: 15px; }
+.slot-tag { position: absolute; top: 0; left: 0; bottom: 0; width: 16px; background: var(--tags, #fff); }
+.slot.filled { padding-left: 23px; }
 .color-swatch { display: inline-block; width: 12px; height: 12px; border: 1px solid #cbd5e1; margin: 0 4px; }
 .filter-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
 .label-preview { width: 130px; }
@@ -168,7 +169,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, .tile:focus-vis
     .packing-list-table .packing-outfit-label { font-weight: 600; }
     .packing-list-table .packing-outfit-him th, .packing-list-table .packing-outfit-him td { border-top-style: dashed; }
     .packing-item-list { display: flex; flex-wrap: wrap; gap: 1px; }
-    .packing-item-box { display: inline-block; padding: 1px 3px; border: 1px solid #94a3b8; border-radius: 2px; font-size: 8pt; line-height: 1.1; overflow-wrap: anywhere; break-inside: avoid; }
+    .packing-item-box { display: inline-block; padding: 1px 3px; border: 1px solid #94a3b8; border-radius: 2px; font-size: 12pt; line-height: 1.1; overflow-wrap: anywhere; break-inside: avoid; }
     .packing-case-heading th { padding-top: 2px; padding-bottom: 2px; border-top: 2px solid #334155; border-bottom: 2px solid #334155; background: #e2e8f0; font-size: 7pt; }
     .packing-case-a .packing-case-heading th { background: #fee2e2; }
     .packing-case-b .packing-case-heading th { background: #dbeafe; }

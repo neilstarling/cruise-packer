@@ -30,7 +30,7 @@ Cruise dates are entered as separate departure and return dates. A cruise with n
 
 ### Night Itinerary Planner
 
-Each cruise has its own planner. Set its departure and return dates, destinations, ship, and duration (5, 7, 10, or 12 nights). The ship selector includes default Cunard ships and any ships added in Settings. For every night:
+Each cruise has its own planner. Set its departure and return dates, destinations, ship, and duration (1 to 14 nights). The ship selector includes default Cunard ships and any ships added in Settings. For every night:
 
 - Select clothing items for each category in the Her and His outfit rows.
 - Select a suitcase for each person's outfit. Suitcase assignments can be left blank.
@@ -46,7 +46,7 @@ Settings is where you manage wardrobe items and reusable app data:
 
 - **Add Clothing Item:** Add an item to either person's wardrobe.
 - **Suitcase Names:** Rename the default suitcases and click **Save Suitcase Names** to apply the changes. **Add Suitcase** prompts for a name and adds another suitcase. All named suitcases are available in planner assignments and print lists.
-- **Cruise Ships:** Add ship names to the planner's ship selector.
+- **Cruise Ships:** Add ship names to the planner's ship selector or delete ships you no longer need. Deleting a ship clears it from any saved cruises that use it.
 - **Custom Sticker Labels:** Create labels with a name, background colour, and tag colour. Delete a label from the Active Labels list.
 - **Backup Data:** Export a JSON file containing wardrobes, labels, suitcase names, ships, and cruise details and plans. Importing a backup replaces the current data after confirmation. Export a backup before importing if you may want to keep the current data.
 

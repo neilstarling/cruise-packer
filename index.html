@@ -68,7 +68,15 @@
                     <label for="cruise-destinations-input">Destinations<input type="text" id="cruise-destinations-input" maxlength="300" placeholder="e.g. Barcelona, Lisbon, Madeira"></label>
                     <label for="cruise-ship-select">Cruise ship<select id="cruise-ship-select"></select></label>
                 </div>
-                <label>Cruise Duration: <select id="dur-select"><option value="5">5 Nights</option><option value="7" selected>7 Nights</option><option value="10">10 Nights</option><option value="12">12 Nights</option></select></label>
+                <label>Cruise Duration: <select id="dur-select">
+                    <option value="1">1 Night</option><option value="2">2 Nights</option>
+                    <option value="3">3 Nights</option><option value="4">4 Nights</option>
+                    <option value="5">5 Nights</option><option value="6">6 Nights</option>
+                    <option value="7" selected>7 Nights</option><option value="8">8 Nights</option>
+                    <option value="9">9 Nights</option><option value="10">10 Nights</option>
+                    <option value="11">11 Nights</option><option value="12">12 Nights</option>
+                    <option value="13">13 Nights</option><option value="14">14 Nights</option>
+                </select></label>
                 <button type="button" class="packing-list-button" data-action="print-packing-list">🖨️ Print Packing List / Save as PDF</button>
             </div>
             <div id="dynamic-itinerary-cards"></div>
@@ -101,7 +109,7 @@
 
             <section>
                 <h3>3. Plan nightly outfits</h3>
-                <p>In a cruise planner, select a clothing slot in either person's row and choose a wardrobe item. Choose a suitcase for each person's outfit. Select Formal or Gala for each night's dress code. Use <strong>Copy Outfit</strong> beside a night to copy the selected items for both people to the first completely empty night of another future cruise.</p>
+                <p>In a cruise planner, choose a duration from 1 to 14 nights, then select a clothing slot in either person's row and choose a wardrobe item. Choose a suitcase for each person's outfit. Select Formal or Gala for each night's dress code. Use <strong>Copy Outfit</strong> beside a night to copy the selected items for both people to the first completely empty night of another future cruise.</p>
                 <p>Drag a night by its ↕ handle to reorder the planner. You can also focus the handle and press the up or down arrow keys. The outfits, dress codes, and suitcase assignments move with the night.</p>
             </section>
 
@@ -112,7 +120,7 @@
 
             <section>
                 <h3>5. Customize Settings and backups</h3>
-                <p>In <strong>Settings</strong>, rename the default suitcases, or use <strong>Add Suitcase</strong> to create more named suitcases. All suitcases can be assigned to outfits and appear in packing lists. Add cruise ships to the ship choices, and create custom sticker labels by setting a name, background colour, and tag colour. Active labels can be deleted.</p>
+                <p>In <strong>Settings</strong>, rename the default suitcases, or use <strong>Add Suitcase</strong> to create more named suitcases. All suitcases can be assigned to outfits and appear in packing lists. Add cruise ships to the ship choices, and delete ships you no longer need. Deleting a ship clears it from any saved cruises that use it. Create custom sticker labels by setting a name, background colour, and tag colour. Active labels can be deleted.</p>
                 <p>Use <strong>Export File</strong> to download a backup of wardrobes, labels, suitcase names, ships, and all cruise plans. <strong>Import File</strong> replaces the current app data after confirmation; export a backup first if you may want to keep the existing data.</p>
             </section>
 

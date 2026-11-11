@@ -39,8 +39,7 @@ const categories = [
     'dresses', 'jackets-her', 'shoes-her', 'handbags', 'walking-stick', 'jackets-him',
     'waistcoats', 'shirts', 'trousers', 'shoes-him'
 ];
-const cruiseDurations = ['5', '7', '10', '12'];
-const legacyCruiseDurations = { '3': '5', '14': '12' };
+const cruiseDurations = Array.from({ length: 14 }, (_, index) => String(index + 1));
 const defaultCruiseShips = [
     'Cunard - Queen Mary 2',
     'Cunard - Queen Elizabeth',
@@ -525,7 +524,7 @@ function getCruiseDuration() {
     const storedDuration = localStorage.getItem('c_d') || '7';
     const duration = cruiseDurations.includes(storedDuration)
         ? storedDuration
-        : legacyCruiseDurations[storedDuration] || '7';
+        : '7';
     if (duration !== storedDuration) localStorage.setItem('c_d', duration);
     return Number(duration);
 }
@@ -1459,7 +1458,16 @@ function renderCruiseShipList() {
     list.replaceChildren();
     getCruiseShips().forEach(ship => {
         const item = document.createElement('li');
-        item.textContent = ship;
+        const name = document.createElement('span');
+        name.textContent = ship;
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'cruise-ship-delete-button';
+        deleteButton.dataset.action = 'delete-cruise-ship';
+        deleteButton.dataset.shipName = ship;
+        deleteButton.setAttribute('aria-label', `Delete ${ship}`);
+        deleteButton.textContent = 'Delete';
+        item.append(name, deleteButton);
         list.appendChild(item);
     });
 }
@@ -1483,6 +1491,33 @@ function addCruiseShip() {
     ships.push(name);
     localStorage.setItem('c_ships', JSON.stringify(ships));
     input.value = '';
+    renderCruiseShipList();
+    renderCruiseShipOptions();
+}
+
+function deleteCruiseShip(name) {
+    const ships = getCruiseShips();
+    if (!ships.includes(name)) {
+        alert('That cruise ship could not be found.');
+        renderCruiseShipList();
+        return;
+    }
+
+    const cruises = getCruises();
+    const affectedCruises = cruises.filter(cruise => cruise.ship === name).length;
+    const usage = affectedCruises
+        ? ` Its selection will be cleared from ${affectedCruises} saved cruise${affectedCruises === 1 ? '' : 's'}.`
+        : '';
+    if (!confirm(`Delete ${name} from the cruise ship list?${usage} This cannot be undone.`)) {
+        return;
+    }
+
+    saveActiveCruise();
+    localStorage.setItem('c_ships', JSON.stringify(ships.filter(ship => ship !== name)));
+    saveCruises(getCruises().map(cruise =>
+        cruise.ship === name ? { ...cruise, ship: '' } : cruise
+    ));
+    if (localStorage.getItem('c_ship') === name) localStorage.setItem('c_ship', '');
     renderCruiseShipList();
     renderCruiseShipOptions();
 }
@@ -1568,7 +1603,7 @@ function validateCruiseRecord(cruise, ships, suitcaseIds) {
     }
 
     const storedDuration = String(cruise.duration);
-    if (![...cruiseDurations, ...Object.keys(legacyCruiseDurations)].includes(storedDuration)) {
+    if (!cruiseDurations.includes(storedDuration)) {
         throw new Error('The backup contains an unsupported cruise duration.');
     }
     if (cruise.ship && !ships.includes(cruise.ship)) {
@@ -1576,9 +1611,7 @@ function validateCruiseRecord(cruise, ships, suitcaseIds) {
     }
     return makeCruise({
         ...cruise,
-        duration: cruiseDurations.includes(storedDuration)
-            ? storedDuration
-            : legacyCruiseDurations[storedDuration]
+        duration: storedDuration
     });
 }
 
@@ -1643,12 +1676,10 @@ function validateBackup(data) {
         throw new Error('The backup selects a cruise ship that is not in its ship list.');
     }
     const storedDuration = data.d === undefined ? '7' : String(data.d);
-    if (![...cruiseDurations, ...Object.keys(legacyCruiseDurations)].includes(storedDuration)) {
+    if (!cruiseDurations.includes(storedDuration)) {
         throw new Error('The backup contains an unsupported cruise duration.');
     }
-    const duration = cruiseDurations.includes(storedDuration)
-        ? storedDuration
-        : legacyCruiseDurations[storedDuration];
+    const duration = storedDuration;
     const cruises = data.cruises === undefined
         ? [makeCruise({
             ...parseLegacyCruiseDates(data.cruiseDate || ''),
@@ -1751,6 +1782,7 @@ document.addEventListener('click', event => {
     else if (button.dataset.action === 'save-suitcase-names') saveSuitcaseNames();
     else if (button.dataset.action === 'add-suitcase') addSuitcase();
     else if (button.dataset.action === 'add-cruise-ship') addCruiseShip();
+    else if (button.dataset.action === 'delete-cruise-ship') deleteCruiseShip(button.dataset.shipName);
     else if (button.dataset.action === 'print-packing-list') printPackingList();
     else if (button.dataset.action === 'open-picker') {
         openPick(Number(button.dataset.day), button.dataset.owner, button.dataset.category);
@@ -1857,6 +1889,7 @@ document.addEventListener('keydown', event => {
 
 window.addEventListener('DOMContentLoaded', () => {
     initializeCruises();
+    renderCruiseShipList();
     confL();
     applySuitcaseNamesToUI();
     loadWard();
