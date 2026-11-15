@@ -16,6 +16,7 @@
             <button class="nav-btn" data-screen="cruises-screen">Cruises</button>
             <button class="nav-btn" data-screen="help-screen">Help</button>
             <button class="nav-btn" data-screen="settings-screen">Settings</button>
+            <button id="install-app-button" class="install-app-button" type="button" data-action="install-app" hidden>Install app</button>
         </nav>
     </header>
 
@@ -44,6 +45,7 @@
     <!-- SCREEN 2: CRUISE LIST -->
     <main id="cruises-screen" class="screen-view">
         <div class="cruise-list-container">
+            <button type="button" class="export-cruises-button" data-action="export-cruises-csv">Export Cruises as CSV</button>
             <h2>Future Cruises</h2>
             <div id="future-cruises-list" class="cruise-list"></div>
             <h2>Past Cruises</h2>
@@ -78,6 +80,7 @@
                     <option value="13">13 Nights</option><option value="14">14 Nights</option>
                 </select></label>
                 <button type="button" class="packing-list-button" data-action="print-packing-list">🖨️ Print Packing List / Save as PDF</button>
+                <button type="button" class="itinerary-export-button" data-action="export-itinerary-xlsx">Export Formatted Itinerary (.xlsx)</button>
             </div>
             <div id="dynamic-itinerary-cards"></div>
         </div>
@@ -93,7 +96,7 @@
     <main id="help-screen" class="screen-view">
         <div class="help-container">
             <h2>Using the Cruise Packing App</h2>
-            <p>Plan outfits for each cruise, keep track of your wardrobe, and print a packing list organized by suitcase.</p>
+            <p>Plan outfits for each cruise, keep track of your wardrobe, and print a packing list organized by night.</p>
 
             <section>
                 <h3>1. Build your wardrobes</h3>
@@ -104,7 +107,7 @@
             <section>
                 <h3>2. Add and manage cruises</h3>
                 <p>Open <strong>Cruises</strong> and choose <strong>Add a new Cruise</strong> to create a cruise and open its planner. Enter departure and return dates, destinations, ship, and duration. Cruise details and plans save automatically in this browser.</p>
-                <p>The Cruises page lists future cruises by nearest departure first and completed cruises by most recent return first. Each row shows dates, duration, ship, and destinations. Choose <strong>View</strong> to open a cruise's planner, or <strong>Delete Cruise</strong> and confirm to remove it.</p>
+                <p>The Cruises page lists future cruises by nearest departure first and completed cruises by most recent return first. Each row shows dates, duration, ship, and destinations. Choose <strong>Export Cruises as CSV</strong> to download the cruise list, <strong>View</strong> to open a cruise's planner, or <strong>Delete Cruise</strong> and confirm to remove it.</p>
             </section>
 
             <section>
@@ -115,7 +118,7 @@
 
             <section>
                 <h3>4. Print a packing list</h3>
-                <p>Choose <strong>Print Packing List / Save as PDF</strong> in a cruise planner. The print view groups each night’s outfits by suitcase and includes any outfits that have not been assigned to a suitcase. Use your browser’s print dialog to print or save as PDF.</p>
+                <p>Choose <strong>Export Formatted Itinerary (.xlsx)</strong> to download a styled Excel workbook with outfit tables and packing counts. Embarkation counts and daytime clothing cells are left blank for you to complete. Choose <strong>Print Packing List / Save as PDF</strong> for each night’s Her and His outfits side by side, grouped by suitcase (A before B) with one shared suitcase column. A 7-night cruise fits on one A4 landscape page; longer lists continue on a second page after the first seven rows.</p>
             </section>
 
             <section>
@@ -204,6 +207,7 @@
     </main>
 
     <script defer src="firebase-config.js"></script>
+    <script defer src="vendor/exceljs.min.js"></script>
     <script defer src="app.js"></script>
 </body>
 </html>

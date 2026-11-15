@@ -2,6 +2,7 @@ let sex = 'her';
 let filt = {};
 let actSlot = null;
 let activeCruiseId = null;
+let deferredInstallPrompt = null;
 const cloudDataKeys = [
     'c_w', 'c_l', 'c_p', 'c_c', 'c_d', 'c_bagNames', 'c_outfitCases',
     'c_cruiseDate', 'c_cruiseStartDate', 'c_cruiseEndDate', 'c_destinations',
@@ -46,6 +47,28 @@ const defaultCruiseShips = [
     'Cunard - Queen Anne',
     'Cunard - Queen Victoria'
 ];
+
+function setInstallAppButtonVisible(visible) {
+    const installButton = document.getElementById('install-app-button');
+    if (!installButton) return;
+    installButton.hidden = !visible;
+}
+
+async function installPwa() {
+    if (!deferredInstallPrompt) {
+        setInstallAppButtonVisible(false);
+        return;
+    }
+    const installPrompt = deferredInstallPrompt;
+    deferredInstallPrompt = null;
+    setInstallAppButtonVisible(false);
+    try {
+        await installPrompt.prompt();
+        await installPrompt.userChoice;
+    } catch (error) {
+        console.error('PWA installation prompt failed:', error);
+    }
+}
 
 function setSyncStatus(message, state = '') {
     const status = document.getElementById('sync-status');
@@ -577,17 +600,22 @@ function cruiseDateLabel(cruise) {
     return cruise.legacyDate || 'Dates not set';
 }
 
-function buildCruises() {
+function getCruiseGroups() {
     const today = todayISO();
     const cruises = getCruises();
     const future = cruises.filter(cruise => !cruise.endDate || cruise.endDate >= today)
         .sort((a, b) => (a.startDate || '9999-12-31').localeCompare(b.startDate || '9999-12-31'));
     const past = cruises.filter(cruise => cruise.endDate && cruise.endDate < today)
         .sort((a, b) => b.endDate.localeCompare(a.endDate));
+    return { future, past };
+}
+
+function buildCruises() {
+    const cruiseGroups = getCruiseGroups();
 
     [
-        ['future-cruises-list', future],
-        ['past-cruises-list', past]
+        ['future-cruises-list', cruiseGroups.future],
+        ['past-cruises-list', cruiseGroups.past]
     ].forEach(([listId, entries]) => {
         const list = document.getElementById(listId);
         list.replaceChildren();
@@ -632,6 +660,449 @@ function buildCruises() {
             list.appendChild(card);
         });
     });
+}
+
+function downloadCsv(filename, rows) {
+    const escapeCell = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const csv = `\uFEFF${rows.map(row => row.map(escapeCell).join(',')).join('\r\n')}`;
+    const file = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportCruisesCsv() {
+    const { future, past } = getCruiseGroups();
+    const rows = [
+        ['Status', 'Date', 'Duration (nights)', 'Cruise ship', 'Destinations'],
+        ...future.map(cruise => [
+            'Future', cruiseDateLabel(cruise), cruise.duration, cruise.ship, cruise.destinations
+        ]),
+        ...past.map(cruise => [
+            'Past', cruiseDateLabel(cruise), cruise.duration, cruise.ship, cruise.destinations
+        ])
+    ];
+    downloadCsv('cruises.csv', rows);
+}
+
+function getItineraryExportData() {
+    saveActiveCruise();
+    const duration = getCruiseDuration();
+    const plans = readData('c_p', {});
+    const codes = readData('c_c', {});
+    const outfitCases = readData('c_outfitCases', {});
+    const wardrobe = readData('c_w', []);
+    const suitcaseNames = new Map(getSuitcaseNames().map(({ id, name }) => [id, name]));
+    const cruise = getCruises().find(entry => entry.id === activeCruiseId);
+    const cruiseDate = cruise
+        ? cruiseDateLabel(cruise)
+        : localStorage.getItem('c_cruiseDate') || '';
+    const categories = [
+        ['her', 'dresses'], ['her', 'jackets-her'], ['her', 'shoes-her'],
+        ['her', 'handbags'], ['her', 'walking-stick'], ['him', 'jackets-him'],
+        ['him', 'waistcoats'], ['him', 'shirts'], ['him', 'trousers'], ['him', 'shoes-him']
+    ];
+    const rows = [[
+        'Cruise date', 'Cruise ship', 'Destinations', 'Night', 'Dress code',
+        'Her dress', 'Her jacket', 'Her shoes', 'Her handbag', 'Her walking stick',
+        'Her suitcase', 'His jacket', 'His waistcoat', 'His shirt', 'His trousers',
+        'His shoes', 'His suitcase'
+    ]];
+
+    for (let day = 1; day <= duration; day++) {
+        const items = categories.map(([owner, category]) => {
+            const itemId = plans[`${day}_${owner}_${category}`];
+            return wardrobe.find(item => item.id === itemId)?.name || '';
+        });
+        rows.push([
+            cruiseDate,
+            cruise?.ship || localStorage.getItem('c_ship') || '',
+            cruise?.destinations || localStorage.getItem('c_destinations') || '',
+            day,
+            codes[day] || 'Formal',
+            ...items.slice(0, 5),
+            suitcaseNames.get(outfitCases[`${day}_her`]) || '',
+            ...items.slice(5),
+            suitcaseNames.get(outfitCases[`${day}_him`]) || ''
+        ]);
+    }
+
+    return {
+        cruiseDate,
+        ship: cruise?.ship || localStorage.getItem('c_ship') || '',
+        destinations: cruise?.destinations || localStorage.getItem('c_destinations') || '',
+        duration,
+        rows
+    };
+}
+
+async function exportItineraryXlsx() {
+    try {
+        const data = getItineraryExportData();
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Cruise Packing App';
+        workbook.created = new Date();
+        const worksheet = workbook.addWorksheet('Formatted', {
+            pageSetup: {
+                paperSize: 9,
+                orientation: 'landscape',
+                fitToPage: true,
+                fitToWidth: 1,
+                fitToHeight: 1,
+                scale: 100,
+                horizontalDpi: 300,
+                verticalDpi: 300,
+                pageOrder: 'downThenOver',
+                margins: {
+                    left: 0.39375, right: 0.39375, top: 0.39375, bottom: 0.39375,
+                    header: 0.511811, footer: 0.511811
+                }
+            }
+        });
+        worksheet.properties.defaultRowHeight = 15;
+        worksheet.properties.defaultColWidth = 11.535;
+        worksheet.columns = [
+            { width: 5.56 }, { width: 13.91 },
+            { width: 20.17 }, { width: 20.17 }, { width: 20.17 },
+            { width: 20.17 }, { width: 20.17 }, { width: 14.19 }
+        ];
+        worksheet.mergeCells('A1:C1');
+        worksheet.mergeCells('D1:E1');
+        worksheet.mergeCells('F1:H1');
+        const thin = { style: 'thin', color: { argb: 'FF000000' } };
+        const borders = {
+            all: { left: thin, right: thin, top: thin, bottom: thin },
+            leftTopBottom: { left: thin, top: thin, bottom: thin },
+            topBottom: { top: thin, bottom: thin },
+            rightTopBottom: { right: thin, top: thin, bottom: thin },
+            leftTop: { left: thin, top: thin },
+            top: { top: thin },
+            rightTop: { right: thin, top: thin },
+            left: { left: thin },
+            right: { right: thin },
+            leftBottom: { left: thin, bottom: thin }
+        };
+        const styleCell = (cell, size, bold, horizontal, wrapText, border, vertical = 'middle') => {
+            cell.font = { name: 'Arial', size, bold };
+            cell.alignment = { horizontal, vertical, wrapText };
+            if (border) cell.border = border;
+        };
+
+        worksheet.getCell('A1').value = data.cruiseDate;
+        worksheet.getCell('D1').value = data.ship;
+        worksheet.getCell('F1').value = data.destinations;
+        for (let column = 1; column <= 8; column++) {
+            const border = column <= 3
+                ? borders.leftTopBottom
+                : column <= 5
+                    ? borders.topBottom
+                    : borders.rightTopBottom;
+            styleCell(worksheet.getCell(1, column), 12, true, 'left', column >= 4, border);
+        }
+        worksheet.getRow(1).height = 29.1;
+        worksheet.getRow(2).height = 7.45;
+
+        const herHeaderRow = 3;
+        const herFirstRow = herHeaderRow + 1;
+        const herLastRow = herFirstRow + data.duration - 1;
+        worksheet.getRow(herHeaderRow).height = 23.1;
+        worksheet.getRow(herHeaderRow).values = [
+            null, 'Dress Code', 'Dress', 'Jacket', 'Shoes', 'Handbag', 'Walking Stick', 'Case'
+        ];
+        for (let column = 1; column <= 8; column++) {
+            styleCell(
+                worksheet.getCell(herHeaderRow, column),
+                12,
+                column > 1,
+                'center',
+                column >= 3,
+                borders.all
+            );
+        }
+        for (let index = 1; index < data.rows.length; index++) {
+            const entry = data.rows[index];
+            const rowNumber = herFirstRow + index - 1;
+            worksheet.getRow(rowNumber).values = [
+                entry[3], entry[4], entry[5], entry[6], entry[7], entry[8], entry[9], entry[10]
+            ];
+            worksheet.getRow(rowNumber).height = 29.85;
+            for (let column = 1; column <= 8; column++) {
+                styleCell(
+                    worksheet.getCell(rowNumber, column),
+                    11,
+                    false,
+                    column === 2 ? 'general' : 'center',
+                    column >= 3 && column <= 7,
+                    borders.all
+                );
+            }
+        }
+        worksheet.getRow(herLastRow + 1).height = 10.4;
+
+        const hisHeaderRow = herLastRow + 2;
+        const hisFirstRow = hisHeaderRow + 1;
+        const hisLastRow = hisFirstRow + data.duration - 1;
+        worksheet.getRow(hisHeaderRow).height = 29.85;
+        worksheet.getRow(hisHeaderRow).values = [
+            null, 'Dress Code', 'Jacket', 'Waistcoat', 'Shirt', 'Trousers', 'Shoes', 'Case'
+        ];
+        for (let column = 1; column <= 8; column++) {
+            styleCell(
+                worksheet.getCell(hisHeaderRow, column),
+                11,
+                column > 1,
+                'center',
+                column >= 3,
+                borders.all
+            );
+        }
+        for (let index = 1; index < data.rows.length; index++) {
+            const entry = data.rows[index];
+            const rowNumber = hisFirstRow + index - 1;
+            worksheet.getRow(rowNumber).values = [
+                entry[3], entry[4], entry[11], entry[12], entry[13], entry[14], entry[15], entry[16]
+            ];
+            worksheet.getRow(rowNumber).height = 29.85;
+            for (let column = 1; column <= 8; column++) {
+                styleCell(
+                    worksheet.getCell(rowNumber, column),
+                    11,
+                    false,
+                    column === 2 ? 'general' : 'center',
+                    column >= 3 && column <= 7,
+                    borders.all
+                );
+            }
+        }
+
+        const shoesByCaseAndItem = new Map();
+        for (const entry of data.rows.slice(1)) {
+            const shoe = entry[15];
+            if (!shoe) continue;
+            const suitcase = entry[16] || '';
+            const key = JSON.stringify([suitcase, shoe]);
+            shoesByCaseAndItem.set(key, (shoesByCaseAndItem.get(key) || 0) + 1);
+        }
+
+        const shoeTitleRow = hisLastRow + 2;
+        worksheet.getCell(shoeTitleRow, 3).value = 'Evening Socks';
+        worksheet.getRow(shoeTitleRow).height = 26.85;
+        for (let column = 3; column <= 7; column++) {
+            const border = column === 3
+                ? { left: thin, top: thin }
+                : column === 7
+                    ? borders.rightTop
+                    : borders.top;
+            styleCell(worksheet.getCell(shoeTitleRow, column), 13, true, 'center', false, border);
+        }
+        const shoeHeaderRow = shoeTitleRow + 1;
+        const shoeFirstRow = shoeHeaderRow + 1;
+        worksheet.getRow(shoeHeaderRow).height = 31.3;
+        worksheet.getRow(shoeHeaderRow).values = [
+            null, null, 'Suitcase', 'Shoe Colour', 'Shoes to Pack', 'No. of Nights Worn', 'Including a Spare Pair'
+        ];
+        for (let column = 3; column <= 7; column++) {
+            const border = column === 3 ? borders.left : column === 7 ? borders.right : null;
+            styleCell(worksheet.getCell(shoeHeaderRow, column), 13, true, 'center', true, border);
+        }
+
+        let shoeRow = shoeFirstRow;
+        for (const [key, nightsWorn] of shoesByCaseAndItem) {
+            const [suitcase, shoe] = JSON.parse(key);
+            const row = worksheet.getRow(shoeRow);
+            row.getCell(3).value = suitcase;
+            row.getCell(4).value = shoe;
+            row.getCell(5).value = { formula: `IF(F${shoeRow}>0,1,0)`, result: 1 };
+            row.getCell(6).value = {
+                formula: `COUNTIFS($G$${hisFirstRow}:$G$${hisLastRow},D${shoeRow},$H$${hisFirstRow}:$H$${hisLastRow},C${shoeRow})`,
+                result: nightsWorn
+            };
+            row.getCell(7).value = {
+                formula: `ROUNDDOWN(F${shoeRow}/2+1,0)`,
+                result: Math.floor(nightsWorn / 2 + 1)
+            };
+            worksheet.getRow(shoeRow).height = 24.6;
+            for (let column = 3; column <= 7; column++) {
+                const border = column === 3 ? borders.left : column === 7 ? borders.right : null;
+                styleCell(worksheet.getCell(shoeRow, column), 13, false, 'center', false, border);
+            }
+            shoeRow++;
+        }
+        if (!shoesByCaseAndItem.size) {
+            worksheet.getRow(shoeFirstRow).height = 24.6;
+            for (let column = 3; column <= 7; column++) {
+                const border = column === 3 ? borders.left : column === 7 ? borders.right : null;
+                styleCell(worksheet.getCell(shoeFirstRow, column), 13, false, 'center', false, border);
+            }
+            shoeRow++;
+        }
+        const shoeTotalRow = shoeRow;
+        worksheet.getCell(shoeTotalRow, 3).value = 'TOTAL';
+        worksheet.getCell(shoeTotalRow, 5).value = {
+            formula: `SUM(E${shoeFirstRow}:E${shoeTotalRow - 1})`,
+            result: shoesByCaseAndItem.size
+        };
+        worksheet.getCell(shoeTotalRow, 6).value = {
+            formula: `SUM(F${shoeFirstRow}:F${shoeTotalRow - 1})`,
+            result: data.rows.slice(1).filter(entry => entry[15]).length
+        };
+        worksheet.getCell(shoeTotalRow, 7).value = {
+            formula: `SUM(G${shoeFirstRow}:G${shoeTotalRow - 1})`,
+            result: [...shoesByCaseAndItem.values()]
+                .reduce((total, nights) => total + Math.floor(nights / 2 + 1), 0)
+        };
+        worksheet.getRow(shoeTotalRow).height = 23.1;
+        for (let column = 3; column <= 7; column++) {
+            const border = column === 3
+                ? borders.leftTopBottom
+                : column === 7
+                    ? borders.rightTopBottom
+                    : borders.topBottom;
+            styleCell(
+                worksheet.getCell(shoeTotalRow, column),
+                13,
+                true,
+                column === 4 ? 'general' : 'center',
+                false,
+                border
+            );
+        }
+
+        const daytimeSocksTitleRow = shoeTotalRow + 2;
+        worksheet.getCell(daytimeSocksTitleRow, 3).value = 'Daytime Socks';
+        worksheet.getCell(daytimeSocksTitleRow, 4).value = 'Embarkation';
+        worksheet.getRow(daytimeSocksTitleRow).height = 28.35;
+        styleCell(worksheet.getCell(daytimeSocksTitleRow, 3), 13, true, 'center', true, borders.leftTop);
+        styleCell(worksheet.getCell(daytimeSocksTitleRow, 4), 13, true, 'center', true, borders.rightTop);
+        const daytimeSocksRow = daytimeSocksTitleRow + 1;
+        worksheet.getCell(daytimeSocksRow, 3).value = data.duration;
+        worksheet.getCell(daytimeSocksRow, 4).value = '';
+        worksheet.getCell(daytimeSocksRow + 1, 3).value = 'Total';
+        worksheet.getCell(daytimeSocksRow + 1, 4).value = {
+            formula: `C${daytimeSocksRow}+D${daytimeSocksRow}`,
+            result: data.duration
+        };
+        worksheet.getRow(daytimeSocksRow).height = 23.1;
+        styleCell(worksheet.getCell(daytimeSocksRow, 3), 13, false, 'center', true, borders.left);
+        styleCell(worksheet.getCell(daytimeSocksRow, 4), 13, false, 'center', true, borders.right);
+        worksheet.getRow(daytimeSocksRow + 1).height = 23.1;
+        styleCell(worksheet.getCell(daytimeSocksRow + 1, 3), 13, true, 'center', true, borders.leftTopBottom);
+        styleCell(worksheet.getCell(daytimeSocksRow + 1, 4), 13, true, 'center', true, borders.rightTopBottom);
+        worksheet.getRow(daytimeSocksRow + 2).height = 9.7;
+
+        const undiesTitleRow = daytimeSocksTitleRow + 4;
+        worksheet.getCell(undiesTitleRow, 3).value = 'Undies';
+        worksheet.getRow(undiesTitleRow).height = 24.6;
+        styleCell(worksheet.getCell(undiesTitleRow, 3), 13, true, 'center', true, borders.leftTop);
+        styleCell(worksheet.getCell(undiesTitleRow, 4), 13, true, 'center', true, borders.top);
+        styleCell(worksheet.getCell(undiesTitleRow, 5), 13, true, 'center', true, borders.rightTop);
+        const undiesHeaderRow = undiesTitleRow + 1;
+        worksheet.getRow(undiesHeaderRow).values = [
+            null, null, 'No. of Nights', 'Cruise Undies', 'Embarkation'
+        ];
+        worksheet.getRow(undiesHeaderRow).height = 24.6;
+        styleCell(worksheet.getCell(undiesHeaderRow, 3), 13, true, 'center', false, borders.left);
+        styleCell(worksheet.getCell(undiesHeaderRow, 4), 13, true, 'center', false, null);
+        styleCell(worksheet.getCell(undiesHeaderRow, 5), 13, true, 'center', false, borders.right);
+        const undiesRow = undiesTitleRow + 2;
+        worksheet.getCell(undiesRow, 3).value = data.duration;
+        worksheet.getCell(undiesRow, 4).value = { formula: `C${undiesRow}*2`, result: data.duration * 2 };
+        worksheet.getCell(undiesRow, 5).value = '';
+        worksheet.getRow(undiesRow).height = 23.1;
+        styleCell(worksheet.getCell(undiesRow, 3), 13, false, 'center', false, borders.left);
+        styleCell(worksheet.getCell(undiesRow, 4), 13, false, 'center', false, null);
+        styleCell(worksheet.getCell(undiesRow, 5), 13, false, 'center', false, borders.right);
+        const undiesTotalRow = undiesTitleRow + 3;
+        worksheet.getCell(undiesTotalRow, 4).value = 'Total Undies';
+        worksheet.getCell(undiesTotalRow, 5).value = {
+            formula: `D${undiesRow}+E${undiesRow}`,
+            result: data.duration * 2
+        };
+        worksheet.getRow(undiesTotalRow).height = 23.1;
+        styleCell(worksheet.getCell(undiesTotalRow, 3), 13, false, 'general', false, borders.leftBottom);
+        styleCell(worksheet.getCell(undiesTotalRow, 4), 13, true, 'center', false, borders.leftTopBottom);
+        styleCell(worksheet.getCell(undiesTotalRow, 5), 13, true, 'center', false, borders.rightTopBottom);
+        worksheet.getRow(undiesTotalRow + 1).height = 8.95;
+
+        const herDaywearHeaderRow = undiesTotalRow + 2;
+        worksheet.getRow(herDaywearHeaderRow).values = [
+            'Her', 'Hat', 'Coat', 'Shoes', 'Trousers', 'Top', 'Socks'
+        ];
+        worksheet.getRow(herDaywearHeaderRow).height = 26.85;
+        for (let column = 1; column <= 7; column++) {
+            styleCell(
+                worksheet.getCell(herDaywearHeaderRow, column),
+                13,
+                true,
+                'center',
+                column >= 6,
+                column === 1 ? borders.leftTop : borders.all
+            );
+        }
+        const herDaywearRow = herDaywearHeaderRow + 1;
+        worksheet.getRow(herDaywearRow).height = 58.95;
+        for (let column = 1; column <= 7; column++) {
+            styleCell(
+                worksheet.getCell(herDaywearRow, column),
+                13,
+                false,
+                'general',
+                column >= 3,
+                column === 1 ? borders.left : borders.all,
+                'bottom'
+            );
+        }
+        const hisDaywearHeaderRow = herDaywearRow + 1;
+        worksheet.getRow(hisDaywearHeaderRow).values = [
+            'His', 'Hat', 'Coat', 'Shoes', 'Trousers', 'Shirt', 'Ganzy'
+        ];
+        worksheet.getRow(hisDaywearHeaderRow).height = 31.3;
+        for (let column = 1; column <= 7; column++) {
+            styleCell(
+                worksheet.getCell(hisDaywearHeaderRow, column),
+                13,
+                true,
+                'center',
+                column >= 3,
+                column === 1 ? borders.leftTop : borders.all
+            );
+        }
+        const hisDaywearRow = hisDaywearHeaderRow + 1;
+        worksheet.getRow(hisDaywearRow).height = 58.95;
+        for (let column = 1; column <= 7; column++) {
+            styleCell(
+                worksheet.getCell(hisDaywearRow, column),
+                13,
+                false,
+                'general',
+                column >= 3,
+                column === 1 ? borders.leftBottom : borders.all,
+                'bottom'
+            );
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const file = new Blob([buffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'cruise_itinerary.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Excel itinerary export failed:', error);
+        alert(`Unable to export Excel itinerary: ${message}`);
+    }
 }
 
 function addCruise() {
@@ -1036,40 +1507,40 @@ function printPackingList() {
     const plans = readData('c_p', {});
     const outfitCases = readData('c_outfitCases', {});
     const wardrobe = readData('c_w', []);
-    const suitcaseNames = getSuitcaseNames();
-    const outfitsByCase = Object.fromEntries([
-        ...suitcaseNames.map(({ id }) => [id, {}]),
-        ['unassigned', {}]
-    ]);
     const categoriesByOwner = {
-        her: [
-            ['dresses', 'Dress'], ['jackets-her', 'Jkt'], ['shoes-her', 'Shoes'], ['handbags', 'Bag'],
-            ['walking-stick', 'Walking Stick']
-        ],
-        him: [
-            ['jackets-him', 'Jkt'], ['waistcoats', 'Wc'], ['shirts', 'Shirt'],
-            ['trousers', 'Trs'], ['shoes-him', 'Shoes']
-        ]
+        her: ['dresses', 'jackets-her', 'shoes-her', 'handbags', 'walking-stick'],
+        him: ['jackets-him', 'waistcoats', 'shirts', 'trousers', 'shoes-him']
     };
-
-    for (let day = 1; day <= duration; day++) {
-        for (const owner of ['her', 'him']) {
-            const outfit = categoriesByOwner[owner]
-                .map(([category, label]) => {
-                    const item = wardrobe.find(entry => entry.id === plans[`${day}_${owner}_${category}`]);
-                    return item ? `${label}: ${item.name}` : null;
-                })
-                .filter(Boolean);
-            if (!outfit.length) continue;
-
-            const suitcase = outfitCases[`${day}_${owner}`];
-            const group = outfitsByCase[suitcaseNames.some(({ id }) => id === suitcase)
-                ? suitcase
-                : 'unassigned'];
-            group[day] ||= { her: [], him: [] };
-            group[day][owner] = outfit;
-        }
-    }
+    const suitcases = getSuitcaseNames();
+    const suitcaseNames = new Map(suitcases.map(({ id, name }) => [id, name]));
+    const suitcaseOrder = new Map(suitcases.map(({ id }, index) => [id, index]));
+    const nights = Array.from({ length: duration }, (_, index) => {
+        const day = index + 1;
+        const outfits = Object.fromEntries(Object.entries(categoriesByOwner).map(([owner, categories]) => {
+            const items = categories
+                .map(category => wardrobe.find(item => item.id === plans[`${day}_${owner}_${category}`]))
+                .filter(Boolean)
+                .map(item => item.name);
+            return [owner, { items }];
+        }));
+        const herSuitcase = outfitCases[`${day}_her`];
+        const hisSuitcase = outfitCases[`${day}_him`];
+        const suitcaseId = outfits.her.items.length
+            ? herSuitcase || hisSuitcase
+            : hisSuitcase || herSuitcase;
+        const suitcaseName = suitcaseNames.get(suitcaseId) || '';
+        return {
+            day,
+            outfits,
+            suitcaseId: suitcaseName ? suitcaseId : '',
+            suitcase: suitcaseName
+        };
+    });
+    nights.sort((first, second) =>
+        (suitcaseOrder.get(first.suitcaseId) ?? Infinity)
+        - (suitcaseOrder.get(second.suitcaseId) ?? Infinity)
+        || first.day - second.day
+    );
 
     const report = document.getElementById('packing-list-report');
     report.className = `packing-list-report packing-list-duration-${duration}`;
@@ -1089,85 +1560,45 @@ function printPackingList() {
     subtitle.textContent = cruiseDetails.join(' | ');
     report.append(title, subtitle);
 
-    [
-        ...suitcaseNames.map(({ id, name }) => [id, name]),
-        ['unassigned', 'Not assigned to a suitcase']
-    ].forEach(([key, name]) => {
-        const nights = outfitsByCase[key];
-        if (key === 'unassigned' && !Object.keys(nights).length) return;
-
-        const body = document.createElement('tbody');
-        body.className = `packing-case packing-case-${key}`;
-        const caseHeading = document.createElement('tr');
-        caseHeading.className = 'packing-case-heading';
-        const caseCell = document.createElement('th');
-        caseCell.colSpan = 3;
-        caseCell.textContent = name;
-        caseHeading.appendChild(caseCell);
-        body.appendChild(caseHeading);
-
-        const dayNumbers = Object.keys(nights).map(Number).sort((a, b) => a - b);
-        dayNumbers.forEach(day => {
-            const nightCell = document.createElement('th');
-            nightCell.scope = 'row';
-            nightCell.textContent = `Night ${day}`;
-            nightCell.rowSpan = 2;
-
-            for (const owner of ['her', 'him']) {
-                const row = document.createElement('tr');
-                row.className = `packing-outfit-row packing-outfit-${owner}`;
-                if (owner === 'her') row.appendChild(nightCell);
-
-                const ownerCell = document.createElement('th');
-                ownerCell.scope = 'row';
-                ownerCell.className = 'packing-outfit-label';
-                ownerCell.textContent = owner === 'her' ? 'Her Outfit' : 'His Outfit';
-                row.appendChild(ownerCell);
-
-                const itemsCell = document.createElement('td');
-                const items = nights[day][owner];
-                if (items.length) {
-                    const itemList = document.createElement('div');
-                    itemList.className = 'packing-item-list';
-                    items.forEach(item => {
-                        const itemBox = document.createElement('span');
-                        itemBox.className = 'packing-item-box';
-                        itemBox.textContent = item;
-                        itemList.appendChild(itemBox);
-                    });
-                    itemsCell.appendChild(itemList);
-                } else {
-                    itemsCell.textContent = '—';
-                }
-                row.appendChild(itemsCell);
-                body.appendChild(row);
-            }
-        });
-        if (!dayNumbers.length) {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.colSpan = 3;
-            cell.textContent = 'No outfits assigned.';
-            row.appendChild(cell);
-            body.appendChild(row);
-        }
-        let table = report.querySelector('table');
-        if (!table) {
-            table = document.createElement('table');
-            table.className = 'packing-list-table';
-            const header = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            ['Night', 'Outfit', 'Clothing items'].forEach(text => {
-                const cell = document.createElement('th');
-                cell.textContent = text;
-                headerRow.appendChild(cell);
-            });
-            header.appendChild(headerRow);
-            table.appendChild(header);
-            report.appendChild(table);
-        }
-        table.appendChild(body);
+    const table = document.createElement('table');
+    table.className = 'packing-list-table';
+    const header = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Night', 'Her Outfit', 'His Outfit', 'Suitcase'].forEach(text => {
+        const cell = document.createElement('th');
+        cell.textContent = text;
+        headerRow.appendChild(cell);
     });
+    header.appendChild(headerRow);
+    table.appendChild(header);
+
+    let previousSuitcaseId;
+    nights.forEach(({ day, outfits, suitcaseId, suitcase }, index) => {
+        const body = document.createElement('tbody');
+        const isSuitcaseGroupStart = index === 0 || suitcaseId !== previousSuitcaseId;
+        body.className = [
+            'packing-night-group',
+            isSuitcaseGroupStart ? 'packing-suitcase-group-start' : '',
+            index === 7 && duration > 7 ? 'packing-night-page-break' : ''
+        ].filter(Boolean).join(' ');
+        const row = document.createElement('tr');
+        row.className = 'packing-night-row';
+        const nightCell = document.createElement('th');
+        nightCell.scope = 'row';
+        nightCell.textContent = `Night ${day}`;
+        row.appendChild(nightCell);
+        const herItemsCell = document.createElement('td');
+        herItemsCell.textContent = outfits.her.items.join(', ');
+        const hisItemsCell = document.createElement('td');
+        hisItemsCell.textContent = outfits.him.items.join(', ');
+        const suitcaseCell = document.createElement('td');
+        suitcaseCell.textContent = suitcase;
+        row.append(herItemsCell, hisItemsCell, suitcaseCell);
+        body.appendChild(row);
+        table.appendChild(body);
+        previousSuitcaseId = suitcaseId;
+    });
+    report.appendChild(table);
     window.print();
 }
 
@@ -1771,8 +2202,14 @@ document.addEventListener('click', event => {
     }
     if (!button) return;
 
+    if (button.dataset.action === 'install-app') {
+        installPwa();
+        return;
+    }
     if (button.dataset.screen) goScrn(button.dataset.screen, button);
     else if (button.classList.contains('tab-btn')) goWard(button.dataset.owner);
+    else if (button.dataset.action === 'export-cruises-csv') exportCruisesCsv();
+    else if (button.dataset.action === 'export-itinerary-xlsx') exportItineraryXlsx();
     else if (button.dataset.action === 'add-cruise') addCruise();
     else if (button.dataset.action === 'view-cruise') openCruise(button.dataset.cruiseId);
     else if (button.dataset.action === 'delete-cruise') deleteCruise(button.dataset.cruiseId);
@@ -1910,3 +2347,14 @@ if ('serviceWorker' in navigator) {
             .catch(error => console.error('Service worker registration failed:', error));
     });
 }
+
+window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    setInstallAppButtonVisible(true);
+});
+
+window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    setInstallAppButtonVisible(false);
+});

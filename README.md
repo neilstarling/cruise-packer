@@ -4,7 +4,7 @@ A browser-based app for organizing clothing, planning outfits across multiple cr
 
 ## Progressive Web App
 
-The app includes a web app manifest, 192px and 512px icons, and a service worker that caches the app shell for offline loading. Serve it from `localhost` or an HTTPS host to enable browser installation and offline support; opening `index.html` directly does not register the service worker. Visit the app once while online to cache its files. App data remains in browser local storage on the current device.
+The app includes a web app manifest, 192px and 512px icons, and a service worker that caches the app shell for offline loading. The locally bundled ExcelJS 4.4.0 library is cached too, so formatted Excel exports work offline after the first visit. Its MIT license is included in [`vendor/EXCELJS-LICENSE`](./vendor/EXCELJS-LICENSE). Serve it from `localhost` or an HTTPS host to enable browser installation and offline support; opening `index.html` directly does not register the service worker. Visit the app once while online to cache its files. App data remains in browser local storage on the current device.
 
 ## Main tabs
 
@@ -24,6 +24,7 @@ The **Cruises** tab has **Future Cruises**, **Past Cruises**, and **Add New** se
 - Future cruises are ordered by departure date, soonest first.
 - Completed cruises are ordered by return date, most recent first.
 - Each cruise row shows its dates, duration, ship, destinations, and **View** and **Delete Cruise** buttons.
+- **Export Cruises as CSV** downloads the cruise list with its status, dates, duration, ship, and destinations.
 - **Add a new Cruise** creates a cruise and opens its planner. **View** reopens a saved planner. **Delete Cruise** asks for confirmation before removing the cruise and its plans.
 
 Cruise dates are entered as separate departure and return dates. A cruise with no return date is kept in Future Cruises. Cruise details and plans save automatically in the current browser.
@@ -38,7 +39,7 @@ Each cruise has its own planner. Set its departure and return dates, destination
 - Use **Copy Outfit** to copy the selected clothing items for both people to the first completely empty night in another future cruise. Existing outfits are not overwritten; dress codes and suitcase assignments are not copied.
 - Drag the ↕ handle to reorder nights, or focus it and use the up and down arrow keys. The outfits, dress codes, and suitcase assignments move with the night.
 
-Use **Print Packing List / Save as PDF** to open a print-friendly list for the current cruise. It groups outfits by suitcase and includes a separate section for outfits not assigned to a suitcase.
+Use **Export Formatted Itinerary (.xlsx)** to download a styled Excel workbook with Her and His outfit tables, shoe-packing counts, and formulas for cruise-night totals. Embarkation counts and daytime clothing cells are left blank for you to complete. Use **Print Packing List / Save as PDF** for a large-print table of each night’s Her and His outfits side by side, grouped by suitcase (A before B), with no clothing-category labels. Outfit names wrap between words and the row spacing leaves room to mark off packed items. A 7-night cruise fits on one A4 landscape page; longer lists continue on a second page after the first seven rows.
 
 ### Settings
 

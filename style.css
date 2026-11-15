@@ -5,11 +5,13 @@ h1 { color: #1a365d; margin-bottom: 15px; }
 .main-nav, .gender-tabs, .outfit-slots { display: flex; gap: 10px; justify-content: center; }
 button, .slot, select, input { padding: 10px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
 button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
+.install-app-button { background: #0f766e; color: #fff; }
 .nav-btn.active, .tab-btn.active { background: #1a365d !important; color: #fff !important; }
 .screen-view, .board-container { display: none; }
 .screen-view.active, .board-container.active { display: block; }
 .cruise-list-container { max-width: 1000px; margin: 0 auto; }
 .cruise-list-container > h2 { color: #1a365d; }
+.export-cruises-button { margin-bottom: 12px; background: #047857; color: #fff; }
 .cruise-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
 .cruise-entry { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 15px; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .cruise-entry-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; flex: 1; }
@@ -23,6 +25,7 @@ button { font-weight: bold; background: #cbd5e1; color: #475569; border: none; }
 .copy-outfit-button:disabled { opacity: 0.55; cursor: not-allowed; }
 .copy-cruise-select { max-width: 220px; }
 .back-to-cruises { margin-bottom: 8px; }
+.itinerary-export-button { margin-left: 8px; background: #047857; color: #fff; }
 
 /* CLOSET STRUCTURE GRID */
 .board-container.active { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1400px; margin: 15px auto 0; }
@@ -151,29 +154,40 @@ button:focus-visible, input:focus-visible, select:focus-visible, .tile:focus-vis
 
 @page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 7mm;
 }
 
 @media print {
     body { margin: 0; padding: 0; background: #fff; color: #111; }
     body > *:not(#packing-list-report) { display: none !important; }
-    #packing-list-report { display: block !important; font-size: 7pt; line-height: 1.05; }
-    .packing-list-title { margin: 0; font-size: 12pt; }
-    .packing-list-subtitle { margin: 2px 0 4px; color: #334155; font-size: 9pt; font-weight: 600; }
+    #packing-list-report {
+        display: block !important;
+        color: #111;
+        font-size: 11pt;
+        line-height: 1.4;
+    }
+    .packing-list-title { margin: 0 0 1mm; font-size: 18pt; }
+    .packing-list-subtitle { margin: 0 0 3mm; color: #334155; font-size: 11pt; font-weight: 600; }
     .packing-list-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-    .packing-list-table th, .packing-list-table td { padding: 4px 3px; border: 1px solid #cbd5e1; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-    .packing-list-table thead th { background: #f1f5f9; }
-    .packing-list-table thead th:nth-child(1) { width: 6%; }
-    .packing-list-table thead th:nth-child(2) { width: 11%; }
-    .packing-list-table thead th:nth-child(3) { width: 83%; }
-    .packing-list-table .packing-outfit-label { font-weight: 600; }
-    .packing-list-table .packing-outfit-him th, .packing-list-table .packing-outfit-him td { border-top-style: dashed; }
-    .packing-item-list { display: flex; flex-wrap: wrap; gap: 1px; }
-    .packing-item-box { display: inline-block; padding: 1px 3px; border: 1px solid #94a3b8; border-radius: 2px; font-size: 11pt; line-height: 1.1; overflow-wrap: anywhere; break-inside: avoid; }
-    .packing-case-heading th { padding-top: 2px; padding-bottom: 2px; border-top: 2px solid #334155; border-bottom: 2px solid #334155; background: #e2e8f0; font-size: 7pt; }
-    .packing-case-a .packing-case-heading th { background: #fee2e2; }
-    .packing-case-b .packing-case-heading th { background: #dbeafe; }
-    .packing-case-unassigned .packing-case-heading th { background: #fef3c7; }
-    .packing-list-table tbody tr:not(.packing-case-heading) { break-inside: avoid; }
-    .packing-list-duration-7 .packing-outfit-row { height: 44px; }
+    .packing-list-table thead { display: table-header-group; }
+    .packing-list-table th, .packing-list-table td {
+        padding: 0.5mm 1.5mm;
+        border: 1px solid #111;
+        vertical-align: middle;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: manual;
+    }
+    .packing-list-table thead th { font-size: 12pt; text-align: center; }
+    .packing-list-table th:nth-child(1) { width: 7%; }
+    .packing-list-table th:nth-child(2) { width: 41%; }
+    .packing-list-table th:nth-child(3) { width: 41%; border-left-width: 2px; }
+    .packing-list-table th:nth-child(4) { width: 11%; }
+    .packing-list-table .packing-night-row { height: 24mm; }
+    .packing-list-table .packing-night-row th:first-child { text-align: center; }
+    .packing-list-table .packing-night-row td:nth-child(3) { border-left-width: 2px; }
+    .packing-suitcase-group-start .packing-night-row th,
+    .packing-suitcase-group-start .packing-night-row td { border-top-width: 2px; }
+    .packing-list-table .packing-night-group { break-inside: avoid; page-break-inside: avoid; }
+    .packing-night-page-break { break-before: page; page-break-before: always; }
 }

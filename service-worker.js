@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cruise-packer-shell-v3';
+const CACHE_NAME = 'cruise-packer-shell-v13';
 const APP_SHELL_FILES = [
     './',
     './index.html',
@@ -7,7 +7,9 @@ const APP_SHELL_FILES = [
     './firebase-config.js',
     './manifest.webmanifest',
     './icons/cruisepacker192.png',
-    './icons/cruisepacker512.png'
+    './icons/cruisepacker512.png',
+    './icons/cruisepacker512-maskable.png',
+    './vendor/exceljs.min.js'
 ];
 const APP_SHELL_URLS = APP_SHELL_FILES.map(file => new URL(file, self.registration.scope).href);
 
